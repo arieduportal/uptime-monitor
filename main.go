@@ -7,9 +7,18 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"github.com/joho/godotenv"
 )
 
+func init() {
+	if err := godotenv.Load(); err != nil {
+		fmt.Println("No .env file found")
+	}
+}
+
 func main() {
+	subject := "Failed trying to submit the report to API"
+
 	logger, err := setupMonitorLogger()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to initialize logger: %v\n", err)
@@ -38,20 +47,22 @@ func main() {
 
 	if err := monitor.SubmitToAPI(ctx, report); err != nil {
 		logger.Error("Failed to submit report to API", zap.Error(err))
+		monitor.SendEmailOnFailure(report, &subject)
 	}
 
-	monitor.SendNotifications(ctx, report)
+	// monitor.SendNotifications(ctx, report)
 
 	exitCode := 0
 	if report.Downtime > 0 {
 		exitCode = 1
-		logger.Error("Services are down", zap.Int("count", report.Downtime))
 	}
 
 	logger.Info("Monitoring completed successfully",
 		zap.Int("exit_code", exitCode),
 		zap.Float64("uptime_percent", report.UptimePercent),
-		zap.Int("total_checks", report.TotalChecks))
+		zap.Int("total_checks", report.TotalChecks),
+		zap.Int("degraded", report.Degraded),
+	)
 
 	os.Exit(exitCode)
 }

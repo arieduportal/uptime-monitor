@@ -29,7 +29,7 @@ const (
 	SSLExpiryWarning = 30
 
 	DefaultTimeout    = 30 * time.Second
-	DefaultUserAgent  = ""
+	DefaultUserAgent  = "Axiolot-Uptime-Bot"
 	DefaultConcurrent = 5
 
 	MaxRetries        = 3
@@ -39,6 +39,7 @@ const (
 
 	RequestsPerSecond = 10
 	BurstSize         = 20
+	DefaultSMTPHost   = "smtp.gmail.com"
 )
 
 type HealthCheckResult struct {
@@ -124,6 +125,11 @@ func (rc RetryConfig) CalculateBackoff(attempt int) time.Duration {
 // IsRetryableError determines if an error should be retried
 func IsRetryableError(err error, statusCode int) bool {
 	if err != nil {
+		if strings.Contains(err.Error(), "marshal") ||
+			strings.Contains(err.Error(), "invalid") ||
+			strings.Contains(err.Error(), "context cancelled") {
+			return false
+		}
 		return true
 	}
 
@@ -135,9 +141,9 @@ func IsRetryableError(err error, statusCode int) bool {
 		http.StatusServiceUnavailable,  // 503
 		http.StatusGatewayTimeout:      // 504
 		return true
+	default:
+		return false
 	}
-
-	return false
 }
 
 func NewMonitorConfig() (*MonitorConfig, error) {
@@ -184,7 +190,7 @@ func NewMonitorConfig() (*MonitorConfig, error) {
 		EmailAuth:      os.Getenv("EMAIL_AUTH"),
 		EmailTo:        emailTo,
 		EmailUser:      os.Getenv("EMAIL_USER"),
-		SMTPHost:       os.Getenv("SMTP_HOST"),
+		SMTPHost:       getEnvOrDefault("SMTP_HOST", DefaultSMTPHost),
 		SMTPPort:       os.Getenv("SMTP_PORT"),
 		MaxRetries:     MaxRetries,
 		RateLimiter:    rateLimiter,
@@ -223,9 +229,6 @@ func (m *UptimeMonitor) CheckDomain(ctx context.Context, domain string) HealthCh
 	for attempt := 0; attempt <= retryConfig.MaxRetries; attempt++ {
 
 		if err := m.config.RateLimiter.Wait(ctx); err != nil {
-			m.logger.Error("Rate limiter error",
-				zap.String("domain", domain),
-				zap.Error(err))
 
 			return HealthCheckResult{
 				Domain:       domain,
@@ -237,7 +240,6 @@ func (m *UptimeMonitor) CheckDomain(ctx context.Context, domain string) HealthCh
 			}
 		}
 
-		// ========== Perform the health check ==========
 		result := HealthCheckResult{
 			Domain:    domain,
 			URL:       domain,
@@ -267,11 +269,6 @@ func (m *UptimeMonitor) CheckDomain(ctx context.Context, domain string) HealthCh
 			}
 
 			backoff := retryConfig.CalculateBackoff(attempt)
-			m.logger.Warn("Request creation failed, retrying",
-				zap.String("domain", domain),
-				zap.Int("attempt", attempt+1),
-				zap.Duration("backoff", backoff),
-				zap.Error(err))
 
 			select {
 			case <-ctx.Done():
@@ -295,9 +292,6 @@ func (m *UptimeMonitor) CheckDomain(ctx context.Context, domain string) HealthCh
 			lastResult = result
 
 			if !IsRetryableError(err, 0) {
-				m.logger.Debug("Non-retryable error, stopping retries",
-					zap.String("domain", domain),
-					zap.Error(err))
 				return result
 			}
 
@@ -309,11 +303,6 @@ func (m *UptimeMonitor) CheckDomain(ctx context.Context, domain string) HealthCh
 			}
 
 			backoff := retryConfig.CalculateBackoff(attempt)
-			m.logger.Warn("Request failed, retrying",
-				zap.String("domain", domain),
-				zap.Int("attempt", attempt+1),
-				zap.Duration("backoff", backoff),
-				zap.Error(err))
 
 			select {
 			case <-ctx.Done():
@@ -347,42 +336,18 @@ func (m *UptimeMonitor) CheckDomain(ctx context.Context, domain string) HealthCh
 		lastResult = result
 
 		if result.Status == StatusUp {
-			if attempt > 0 {
-				m.logger.Info("Request succeeded after retry",
-					zap.String("domain", domain),
-					zap.Int("attempts", attempt+1))
-			} else {
-				m.logger.Info("Health check completed",
-					zap.String("domain", result.Domain),
-					zap.String("status", result.Status),
-					zap.Int("status_code", result.StatusCode),
-					zap.Int64("response_time_ms", result.ResponseTime))
-			}
 			return result
 		}
 
 		if !IsRetryableError(nil, result.StatusCode) {
-			m.logger.Debug("Non-retryable status code, stopping retries",
-				zap.String("domain", domain),
-				zap.Int("status_code", result.StatusCode))
 			return result
 		}
 
 		if attempt == retryConfig.MaxRetries {
-			m.logger.Warn("Max retries reached",
-				zap.String("domain", domain),
-				zap.Int("attempts", attempt+1),
-				zap.String("final_status", result.Status))
 			break
 		}
 
 		backoff := retryConfig.CalculateBackoff(attempt)
-		m.logger.Warn("Request returned non-success status, retrying",
-			zap.String("domain", domain),
-			zap.Int("attempt", attempt+1),
-			zap.Int("status_code", result.StatusCode),
-			zap.Duration("backoff", backoff),
-			zap.String("status", result.Status))
 
 		select {
 		case <-ctx.Done():
@@ -415,10 +380,6 @@ func (m *UptimeMonitor) determineStatus(statusCode int, responseTime int64) stri
 
 // RunCheck runs a health check on all domains in the configuration
 func (m *UptimeMonitor) RunCheck(ctx context.Context) (*MonitorReport, error) {
-	m.logger.Info("Starting uptime monitoring with rate limiting",
-		zap.Int("total_domains", len(m.config.Domains)),
-		zap.String("environment", m.config.Environment),
-		zap.Float64("rate_limit", float64(RequestsPerSecond)))
 
 	results := make([]HealthCheckResult, len(m.config.Domains))
 	var wg sync.WaitGroup
@@ -438,12 +399,6 @@ func (m *UptimeMonitor) RunCheck(ctx context.Context) (*MonitorReport, error) {
 	wg.Wait()
 
 	report := m.generateReport(results)
-
-	m.logger.Info("Monitoring completed",
-		zap.Int("total_checks", report.TotalChecks),
-		zap.Int("uptime", report.Uptime),
-		zap.Int("downtime", report.Downtime),
-		zap.Float64("uptime_percent", report.UptimePercent))
 
 	return report, nil
 }
@@ -493,7 +448,7 @@ func (m *UptimeMonitor) generateReport(results []HealthCheckResult) *MonitorRepo
 func (m *UptimeMonitor) SaveReport(report *MonitorReport) (string, error) {
 	if err := os.MkdirAll(m.config.OutputDir, 0755); err != nil {
 		m.logger.Error("Failed to create output directory, sending via email", zap.Error(err))
-		if emailErr := m.SendEmailOnFailure(report); emailErr != nil {
+		if emailErr := m.SendEmailOnFailure(report, nil); emailErr != nil {
 			m.logger.Error("Failed to send email", zap.Error(emailErr))
 		}
 		return "", fmt.Errorf("failed to create output directory: %w", err)
@@ -505,7 +460,7 @@ func (m *UptimeMonitor) SaveReport(report *MonitorReport) (string, error) {
 	jsonData, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
 		m.logger.Error("Failed to marshal JSON, sending via email", zap.Error(err))
-		if emailErr := m.SendEmailOnFailure(report); emailErr != nil {
+		if emailErr := m.SendEmailOnFailure(report, nil); emailErr != nil {
 			m.logger.Error("Failed to send email", zap.Error(emailErr))
 		}
 		return "", fmt.Errorf("failed to marshal JSON: %w", err)
@@ -513,7 +468,7 @@ func (m *UptimeMonitor) SaveReport(report *MonitorReport) (string, error) {
 
 	if err := os.WriteFile(filename, jsonData, 0644); err != nil {
 		m.logger.Error("Failed to write file, sending via email", zap.Error(err))
-		if emailErr := m.SendEmailOnFailure(report); emailErr != nil {
+		if emailErr := m.SendEmailOnFailure(report, nil); emailErr != nil {
 			m.logger.Error("Failed to send email", zap.Error(emailErr))
 		}
 		return "", fmt.Errorf("failed to write file: %w", err)
@@ -523,21 +478,55 @@ func (m *UptimeMonitor) SaveReport(report *MonitorReport) (string, error) {
 	return filename, nil
 }
 
+// BuildEmailMessage builds a multipart email message with both plain text and HTML parts.
+func BuildEmailMessage(from string, to []string, subject string, htmlBody string, plainBody string) []byte {
+	boundary := "boundary_" + fmt.Sprint(time.Now().UnixNano())
+
+	var msg []byte
+	msg = fmt.Appendf(msg, "From: Uptime Monitor <%s>\r\n", from)
+	msg = fmt.Appendf(msg, "To: %s\r\n", strings.Join(to, ","))
+	msg = fmt.Appendf(msg, "Subject: %s\r\n", subject)
+	msg = fmt.Appendf(msg, "MIME-Version: 1.0\r\n")
+	msg = fmt.Appendf(msg, "Content-Type: multipart/alternative; boundary=%s\r\n", boundary)
+	msg = fmt.Appendf(msg, "\r\n")
+
+	// Plain text section (for clients that don't support HTML)
+	msg = fmt.Appendf(msg, "--%s\r\n", boundary)
+	msg = fmt.Appendf(msg, "Content-Type: text/plain; charset=UTF-8\r\n\r\n")
+	msg = fmt.Appendf(msg, "%s\r\n", plainBody)
+
+	// HTML section
+	msg = fmt.Appendf(msg, "\r\n--%s\r\n", boundary)
+	msg = fmt.Appendf(msg, "Content-Type: text/html; charset=UTF-8\r\n\r\n")
+	msg = fmt.Appendf(msg, "%s\r\n", htmlBody)
+
+	// Closing boundary
+	msg = fmt.Appendf(msg, "\r\n--%s--\r\n", boundary)
+
+	return msg
+}
+
 // SendEmailOnFailure sends report via email when JSON file creation fails
-func (m *UptimeMonitor) SendEmailOnFailure(jsonData interface{}) error {
+func (m *UptimeMonitor) SendEmailOnFailure(report *MonitorReport, head *string) error {
 	if m.config.EmailAuth == "" || len(m.config.EmailTo) == 0 || m.config.EmailUser == "" {
 		m.logger.Debug("Email configuration not set, skipping email")
 		return nil
 	}
 
-	jsonBytes, err := json.MarshalIndent(jsonData, "", "  ")
+	jsonBytes, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal JSON data: %w", err)
 	}
 
-	subject := "Uptime Monitor Report Failed"
+	var subject string
 
-	body := fmt.Sprintf(
+	if head == nil {
+		subject = "Uptime Monitor File Report Creation Failed"
+	} else {
+		subject = *head
+	}
+
+	plainBody := fmt.Sprintf(
 		"Failed to create JSON file for report\n\n"+
 			"The report data is attached below:\n\n"+
 			"=== BEGIN JSON DATA ===\n"+
@@ -546,14 +535,19 @@ func (m *UptimeMonitor) SendEmailOnFailure(jsonData interface{}) error {
 		string(jsonBytes),
 	)
 
-	var message []byte
-	message = fmt.Appendf(message, "From: Uptime Monitor <%s>\r\n", m.config.EmailUser)
-	message = fmt.Appendf(message, "To: %s\r\n", strings.Join(m.config.EmailTo, ","))
-	message = fmt.Appendf(message, "Subject: %s\r\n", subject)
-	message = fmt.Appendf(message, "MIME-Version: 1.0\r\n")
-	message = fmt.Appendf(message, "Content-Type: text/plain; charset=UTF-8\r\n")
-	message = fmt.Appendf(message, "\r\n")
-	message = fmt.Appendf(message, "%s\r\n", body)
+	htmlBody, err := BuildHTMLReport(report, subject)
+
+	if err != nil {
+		htmlBody = "<pre>" + plainBody + "</pre>"
+	}
+
+	message := BuildEmailMessage(
+		m.config.EmailUser,
+		m.config.EmailTo,
+		subject,
+		htmlBody,
+		plainBody,
+	)
 
 	auth := smtp.PlainAuth("", m.config.EmailUser, m.config.EmailAuth, m.config.SMTPHost)
 
@@ -566,6 +560,7 @@ func (m *UptimeMonitor) SendEmailOnFailure(jsonData interface{}) error {
 	)
 
 	if err != nil {
+		m.logger.Error("Failed to send email", zap.Error(err))
 		return fmt.Errorf("failed to send email: %w", err)
 	}
 
@@ -578,8 +573,7 @@ func (m *UptimeMonitor) SendEmailOnFailure(jsonData interface{}) error {
 // SubmitToAPI submits the monitoring report to external API with rate limiting and retries
 func (m *UptimeMonitor) SubmitToAPI(ctx context.Context, report *MonitorReport) error {
 	if m.config.APIURL == "" {
-		m.logger.Debug("API URL not configured, skipping submission")
-		return nil
+		return fmt.Errorf("failed to provide backend url")
 	}
 
 	retryConfig := DefaultRetryConfig()
@@ -600,17 +594,10 @@ func (m *UptimeMonitor) SubmitToAPI(ctx context.Context, report *MonitorReport) 
 			lastErr = fmt.Errorf("failed to create API request: %w", err)
 
 			if attempt == retryConfig.MaxRetries {
-				m.logger.Error("Max retries reached for API submission",
-					zap.Int("attempts", attempt+1),
-					zap.Error(lastErr))
 				return fmt.Errorf("API submission failed after %d attempts: %w", retryConfig.MaxRetries+1, lastErr)
 			}
 
 			backoff := retryConfig.CalculateBackoff(attempt)
-			m.logger.Warn("Failed to create API request, retrying",
-				zap.Int("attempt", attempt+1),
-				zap.Duration("backoff", backoff),
-				zap.Error(err))
 
 			select {
 			case <-ctx.Done():
@@ -621,6 +608,7 @@ func (m *UptimeMonitor) SubmitToAPI(ctx context.Context, report *MonitorReport) 
 		}
 
 		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("User-Agent", m.config.UserAgent)
 		if m.config.APIKey != "" {
 			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", m.config.APIKey))
 		}
@@ -630,17 +618,10 @@ func (m *UptimeMonitor) SubmitToAPI(ctx context.Context, report *MonitorReport) 
 			lastErr = fmt.Errorf("failed to submit to API: %w", err)
 
 			if attempt == retryConfig.MaxRetries {
-				m.logger.Error("Max retries reached for API submission",
-					zap.Int("attempts", attempt+1),
-					zap.Error(lastErr))
 				return fmt.Errorf("API submission failed after %d attempts: %w", retryConfig.MaxRetries+1, lastErr)
 			}
 
 			backoff := retryConfig.CalculateBackoff(attempt)
-			m.logger.Warn("API submission failed, retrying",
-				zap.Int("attempt", attempt+1),
-				zap.Duration("backoff", backoff),
-				zap.Error(err))
 
 			select {
 			case <-ctx.Done():
@@ -656,57 +637,31 @@ func (m *UptimeMonitor) SubmitToAPI(ctx context.Context, report *MonitorReport) 
 			lastErr = fmt.Errorf("API submission failed with status %d: %s", resp.StatusCode, string(body))
 
 			if !IsRetryableError(lastErr, resp.StatusCode) {
-				m.logger.Error("Non-retryable API error",
-					zap.Int("status_code", resp.StatusCode),
-					zap.String("response", string(body)))
 				return lastErr
 			}
 
-			// Retryable error (5xx or 429)
-			if attempt == retryConfig.MaxRetries {
-				m.logger.Error("Max retries reached for API submission",
-					zap.Int("attempts", attempt+1),
-					zap.Int("status_code", resp.StatusCode),
-					zap.Error(lastErr))
-				return fmt.Errorf("API submission failed after %d attempts: %w", retryConfig.MaxRetries+1, lastErr)
+			if attempt < retryConfig.MaxRetries {
+				backoff := retryConfig.CalculateBackoff(attempt)
+				select {
+				case <-ctx.Done():
+					return fmt.Errorf("context cancelled during retry: %w", ctx.Err())
+				case <-time.After(backoff):
+					continue
+				}
 			}
 
-			backoff := retryConfig.CalculateBackoff(attempt)
-			m.logger.Warn("API returned error status, retrying",
-				zap.Int("attempt", attempt+1),
-				zap.Int("status_code", resp.StatusCode),
-				zap.Duration("backoff", backoff))
-
-			select {
-			case <-ctx.Done():
-				return fmt.Errorf("context cancelled during retry: %w", ctx.Err())
-			case <-time.After(backoff):
-				continue
-			}
-		}
-
-		if attempt > 0 {
-			m.logger.Info("API submission succeeded after retry",
-				zap.Int("attempts", attempt+1),
-				zap.String("url", m.config.APIURL),
-				zap.Int("status", resp.StatusCode))
-		} else {
-			m.logger.Info("Report submitted to API",
-				zap.String("url", m.config.APIURL),
-				zap.Int("status", resp.StatusCode))
+			return lastErr
 		}
 
 		return nil
 	}
 
-	// the code should not reach here, but just in case nobody can guess
 	return fmt.Errorf("API submission failed after %d attempts: %w", retryConfig.MaxRetries+1, lastErr)
 }
 
 // SendNotifications sends notifications for the given report
 func (m *UptimeMonitor) SendNotifications(ctx context.Context, report *MonitorReport) {
 	if report.Downtime == 0 && report.Degraded == 0 {
-		m.logger.Debug("No issues detected, skipping notifications")
 		return
 	}
 

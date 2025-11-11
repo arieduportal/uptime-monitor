@@ -2,9 +2,8 @@ name: Uptime Monitor
 
 on:
   schedule:
-    # Run every hour
     - cron: '*/5 * * * *'
-  workflow_dispatch: # Allow manual triggers
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -27,7 +26,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.21'
           cache: true
 
       - name: Install dependencies
@@ -40,11 +39,16 @@ jobs:
           API_KEY: ${{ secrets.API_KEY }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          ENVIRONMENT: ${{ secrets.ENVIRONMENT || 'production' }}
-          LOG_LEVEL: ${{ secrets.LOG_LEVEL || 'info' }}
-          MONITOR_TIMEOUT: ${{ secrets.MONITOR_TIMEOUT || '30s' }}
-          MONITOR_CONCURRENT: ${{ secrets.MONITOR_CONCURRENT || '5' }}
+          ENVIRONMENT: ${{ secrets.ENVIRONMENT != '' && secrets.ENVIRONMENT || 'production' }}
+          LOG_LEVEL: ${{ secrets.LOG_LEVEL != '' && secrets.LOG_LEVEL || 'info' }}
+          MONITOR_TIMEOUT: ${{ secrets.MONITOR_TIMEOUT != '' && secrets.MONITOR_TIMEOUT || '30s' }}
+          MONITOR_CONCURRENT: ${{ secrets.MONITOR_CONCURRENT != '' && secrets.MONITOR_CONCURRENT || '5' }}
           OUTPUT_DIR: ./reports
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_AUTH: ${{ secrets.EMAIL_AUTH }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT != '' && secrets.SMTP_PORT || '587' }}
+          USER_AGENT: ${{ secrets.USER_AGENT }}
         run: |
           go run .
         continue-on-error: true
