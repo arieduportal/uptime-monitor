@@ -50,7 +50,7 @@ func main() {
 		monitor.SendEmailOnFailure(report, &subject)
 	}
 
-	// monitor.SendNotifications(ctx, report)
+	monitor.SendNotifications(ctx, report)
 
 	exitCode := 0
 	if report.Downtime > 0 {

@@ -509,7 +509,6 @@ func BuildEmailMessage(from string, to []string, subject string, htmlBody string
 // SendEmailOnFailure sends report via email when JSON file creation fails
 func (m *UptimeMonitor) SendEmailOnFailure(report *MonitorReport, head *string) error {
 	if m.config.EmailAuth == "" || len(m.config.EmailTo) == 0 || m.config.EmailUser == "" {
-		m.logger.Debug("Email configuration not set, skipping email")
 		return nil
 	}
 
@@ -560,7 +559,6 @@ func (m *UptimeMonitor) SendEmailOnFailure(report *MonitorReport, head *string) 
 	)
 
 	if err != nil {
-		m.logger.Error("Failed to send email", zap.Error(err))
 		return fmt.Errorf("failed to send email: %w", err)
 	}
 
