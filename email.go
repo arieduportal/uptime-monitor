@@ -1,0 +1,298 @@
+package main
+
+import (
+	"bytes"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+	"strings"
+	"time"
+
+	supa_storage "github.com/supabase-community/storage-go"
+	"github.com/wcharczuk/go-chart/v2"
+	"github.com/wcharczuk/go-chart/v2/drawing"
+)
+
+func BuildHTMLReport(report *MonitorReport, subject string) (string, error) {
+	var chartBase64 string
+
+	jsonBytes, err := json.MarshalIndent(report, "", "  ")
+
+	if err != nil {
+		return "", fmt.Errorf("failed to build json data: %w", err)
+	}
+
+	chartBase64, err = generateUptimeChart(report)
+	if err != nil {
+		fmt.Println("err", err)
+		chartBase64 = ""
+	} else {
+		uploadedLink, uploadErr := storageChartImage(chartBase64)
+		if uploadErr == nil {
+			chartBase64 = uploadedLink
+		} else {
+			fmt.Println("err", uploadErr)
+			chartBase64 = ""
+		}
+	}
+
+	html := fmt.Sprintf(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>%s</title>
+<style>
+body {
+  font-family: "Segoe UI", Roboto, Arial, sans-serif;
+  background-color: #f8f9fb;
+  margin: 0;
+  color: #333;
+}
+.container {
+  max-width: 850px;
+  margin: 30px auto;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+  overflow: hidden;
+}
+.header {
+  background: linear-gradient(135deg, #2f2e41, #4a47a3);
+  color: #fff;
+  padding: 20px 30px;
+}
+.header h1 { margin: 0; font-size: 1.6em; }
+.section { padding: 20px 30px; }
+h2 { color: #2f2e41; border-bottom: 2px solid #eee; padding-bottom: 5px; }
+.stats {
+  display: flex; flex-wrap: wrap; gap: 15px; margin-top: 10px;
+}
+.stat {
+  flex: 1 1 150px; background: #f5f6f9;
+  padding: 10px; border-radius: 8px; text-align: center;
+}
+.stat span {
+  display: block; font-size: 1.3em; font-weight: bold; color: #2f2e41;
+}
+.table-container { overflow-x: auto; margin-top: 15px; }
+table { width: 100%%; border-collapse: collapse; }
+th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; font-size: 0.95em; }
+th { background: #fafafa; font-weight: 600; }
+tr:hover { background: #f9f9ff; }
+.status-up { color: #2ecc71; font-weight: bold; }
+.status-down { color: #e74c3c; font-weight: bold; }
+.status-degraded { color: #f39c12; font-weight: bold; }
+.chart {
+  width: 100%%;
+  text-align: center;
+  margin-top: 15px;
+}
+.footer {
+  background: #f4f4f8; color: #777;
+  text-align: center; padding: 15px; font-size: 0.85em;
+}
+pre {
+  background: #1e1e1e; color: #eee; padding: 12px;
+  border-radius: 8px; overflow-x: auto; font-size: 0.9em;
+}
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📡 %s</h1>
+      <p>Generated on %s</p>
+    </div>
+
+    <div class="section">
+      <h2>Summary</h2>
+      <div class="stats">
+        <div class="stat"><span>%d</span>Total Checks</div>
+        <div class="stat"><span>%d</span>Uptime</div>
+        <div class="stat"><span>%d</span>Downtime</div>
+        <div class="stat"><span>%d</span>Degraded</div>
+        <div class="stat"><span>%.2f%%</span>Uptime %%</div>
+        <div class="stat"><span>%.2f ms</span>Avg Latency</div>
+      </div>
+      <div class="chart">
+        <img src="%s" alt="Uptime Chart" style="max-width: 100%%; border-radius: 8px; margin-top: 10px;">
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Detailed Results</h2>
+      <div class="table-container">
+        <table>
+          <tr>
+            <th>Domain</th><th>Status</th><th>Code</th><th>Latency</th>
+            <th>SSL Expiry</th><th>Checked At</th>
+          </tr>
+          %s
+        </table>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Raw JSON Data</h2>
+      <pre>%s</pre>
+    </div>
+
+    <div class="footer">
+      <p>Powered by <strong>Axiolot Hub</strong> — Reliable monitoring, elegant delivery.</p>
+    </div>
+  </div>
+</body>
+</html>`,
+		subject,
+		subject,
+		report.Timestamp.Format(time.RFC1123),
+		report.TotalChecks, report.Uptime, report.Downtime, report.Degraded,
+		report.UptimePercent, report.AverageLatency,
+		chartBase64,
+		buildResultsTable(report.Results),
+		string(jsonBytes),
+	)
+
+	return html, nil
+}
+
+func generateUptimeChart(report *MonitorReport) (string, error) {
+	Colors := []drawing.Color{
+		drawing.ColorGreen,
+		drawing.ColorRed,
+		drawing.ColorYellow,
+	}
+
+	graph := chart.BarChart{
+		Title: "Uptime Overview Report",
+		TitleStyle: chart.Style{
+			FontSize:  16,
+			FontColor: drawing.ColorFromHex("2f2e41"),
+		},
+		Background: chart.Style{
+			Padding: chart.Box{
+				Top:    40,
+				Left:   20,
+				Right:  20,
+				Bottom: 20,
+			},
+			FillColor: drawing.ColorWhite,
+		},
+		Width:    800,
+		Height:   400,
+		BarWidth: 80,
+		Bars: []chart.Value{
+			{
+				Value: float64(report.Uptime),
+				Label: "Uptime",
+				Style: chart.Style{FillColor: Colors[0], FontSize: 8, FontColor: Colors[0]}},
+			{
+				Value: float64(report.Downtime),
+				Label: "Downtime",
+				Style: chart.Style{FillColor: Colors[1], FontSize: 8, FontColor: Colors[1]}},
+			{
+				Value: float64(report.Degraded),
+				Label: "Degraded",
+				Style: chart.Style{FillColor: Colors[2], FontSize: 8, FontColor: Colors[2]}},
+		},
+		XAxis: chart.Style{
+			FontSize: 10,
+		},
+		YAxis: chart.YAxis{
+			Name: "Powered By Axiolot Hub",
+			Style: chart.Style{
+				FontSize: 8,
+			},
+		},
+		Canvas: chart.Style{
+			FillColor: drawing.ColorFromHex("f8f9fa"),
+		},
+	}
+
+	var buf bytes.Buffer
+	err := graph.Render(chart.PNG, &buf)
+	if err != nil {
+		return "", err
+	}
+
+	return base64.StdEncoding.EncodeToString(buf.Bytes()), nil
+}
+
+func buildResultsTable(results []HealthCheckResult) string {
+	rows := ""
+	for _, r := range results {
+		statusClass := "status-up"
+		if strings.ToLower(r.Status) == "down" {
+			statusClass = "status-down"
+		} else if strings.ToLower(r.Status) == "degraded" {
+			statusClass = "status-degraded"
+		}
+		rows += fmt.Sprintf(`
+<tr>
+	<td>%s</td>
+	<td class="%s">%s</td>
+	<td>%d</td>
+	<td>%d ms</td>
+	<td>%s</td>
+	<td>%s</td>
+</tr>`, r.Domain, statusClass, strings.ToUpper(r.Status), r.StatusCode, r.ResponseTime, r.SSLExpiry, r.CheckedAt)
+	}
+	return rows
+}
+
+func storageChartImage(chartBase64 string) (string, error) {
+	supabaseURL := os.Getenv("SUPABASE_URL")
+	supabaseKey := os.Getenv("SUPABASE_KEY")
+	bucket := "uptime-charts"
+
+	if supabaseURL == "" || supabaseKey == "" {
+		fmt.Println("Supabase configuration missing. Skipping chart upload.")
+		return "", fmt.Errorf("missing SUPABASE_URL or SUPABASE_KEY environment variables")
+	}
+
+	storageClient := supa_storage.NewClient("https://<project-reference-id>.supabase.co/storage/v1", "<project-secret-api-key>", nil)
+
+	fmt.Println(supabaseKey, supabaseURL)
+
+	data, err := base64.StdEncoding.DecodeString(chartBase64)
+	if err != nil {
+		fmt.Println("err", err)
+		return "", fmt.Errorf("failed to decode base64 image: %w", err)
+	}
+
+	// fmt.Println(data)
+
+	dateFolder := time.Now().Format("2006-01-02")
+	filename := fmt.Sprintf("charts/%s/report_%d.png", dateFolder, time.Now().Unix())
+
+	uploadURL := fmt.Sprintf("%s/storage/v1/s3/%s/%s", supabaseURL, bucket, filename)
+
+	fmt.Println(uploadURL)
+	req, err := http.NewRequest("POST", uploadURL, bytes.NewReader(data))
+	if err != nil {
+		fmt.Println("err", err)
+		return "", fmt.Errorf("failed to create upload request: %w", err)
+	}
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", supabaseKey))
+	req.Header.Set("Content-Type", "image/png")
+	req.Header.Set("x-upsert", "true")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		fmt.Println("err", err)
+		return "", fmt.Errorf("failed to upload to Supabase: %w", err)
+	}
+	fmt.Println("resp", resp)
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return "", fmt.Errorf("upload failed with status %d", resp.StatusCode)
+	}
+
+	publicURL := fmt.Sprintf("%s/storage/v1/object/public/%s/%s", supabaseURL, bucket, filename)
+	fmt.Printf("Chart image uploaded to: %s\n", publicURL)
+	return publicURL, nil
+}
