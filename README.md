@@ -892,12 +892,6 @@ Contributions are welcome! Please:
 
 MIT License - see [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
-
-- Built with [Go](https://golang.org)
-- Logging by [Zap](https://github.com/uber-go/zap)
-- Rate limiting by [golang.org/x/time/rate](https://pkg.go.dev/golang.org/x/time/rate)
-- Automated with [GitHub Actions](https://github.com/features/actions)
 
 ## 📞 Support
 
