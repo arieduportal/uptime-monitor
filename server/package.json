@@ -8,5 +8,10 @@
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.81.1",
+    "date-fns": "^4.1.0",
+    "hono": "^4.10.5"
   }
 }
