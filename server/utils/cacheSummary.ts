@@ -1,4 +1,4 @@
-import { supabase } from "../config/config";
+import { supabase, SUMMARY_TABLE } from "../config/config";
 import type { DailySummary } from "../types";
 
 export async function getCachedSummaries(domains: string[], days: number) {
@@ -6,13 +6,12 @@ export async function getCachedSummaries(domains: string[], days: number) {
     sinceDate.setDate(sinceDate.getDate() - days);
 
     const { data, error } = await supabase
-        .from("uptime_summary")
+        .from(SUMMARY_TABLE)
         .select("*")
         .in("domain", domains)
         .gte("date", sinceDate.toISOString().slice(0, 10));
 
     if (error) {
-        console.error("Cache fetch error:", error);
         return [];
     }
     return data || [];
@@ -35,7 +34,7 @@ export async function saveSummariesToCache(summaries: Record<string, DailySummar
     }
 
     const { error } = await supabase
-        .from("uptime_summary")
+        .from(SUMMARY_TABLE)
         .upsert(toInsert, { onConflict: "domain,date" });
 
     if (error) {

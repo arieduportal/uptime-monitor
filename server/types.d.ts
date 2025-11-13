@@ -1,6 +1,7 @@
 export interface MonitorReport {
+    id?: string;
     service: string;
-    environment: string;
+    environment?: string;
     total_checks: number;
     uptime_count: number;
     downtime_count: number;
@@ -8,7 +9,7 @@ export interface MonitorReport {
     uptime_percent: number;
     average_latency_ms: number;
     timestamp: string;
-    results: ResultData[];
+    results: HealthCheckResult[];
 }
 
 export interface SubmitReportResult {
@@ -16,19 +17,19 @@ export interface SubmitReportResult {
     created_at: string;
 }
 
-interface ResultData {
+interface HealthCheckResult {
     domain: string;
     url: URL;
-    status: string;
-    statusCode: number;
-    responseTime: number;
-    isSSL: boolean;
-    sslExpiry: string;
-    sslDaysLeft: string;
-    errorMessage: string;
-    contentLength: number;
+    status: "up" | "down" | "degraded";
+    status_code: number;
+    response_time_ms: number;
+    is_ssl: boolean;
+    ssl_expiry: string;
+    ssl_days_left: string;
+    error_message: string;
+    content_length: number;
     timestamp: string;
-    checkedAt: string;
+    checked_at: string;
 }
 
 export interface QueryInput {

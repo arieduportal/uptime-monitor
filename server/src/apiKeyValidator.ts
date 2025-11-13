@@ -14,7 +14,6 @@ export async function validateApiKey(c: Context, next: Next) {
         }, 401);
     }
 
-    // Expected format: "Bearer axh_xxxxx..."
     const parts = authHeader.split(' ');
     if (parts.length !== 2 || parts[0] !== 'Bearer') {
         return c.json({
@@ -57,10 +56,8 @@ export async function validateApiKey(c: Context, next: Next) {
         }, 401);
     }
 
-    // Update usage (async, don't wait)
     updateKeyUsage(hashedKey).catch(console.error);
 
-    // Store key info in context for later use
     c.set('apiKeyId', data.id);
     c.set('apiKeyName', data.name);
 

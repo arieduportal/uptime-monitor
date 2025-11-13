@@ -10,8 +10,10 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@hono/zod-validator": "^0.7.4",
     "@supabase/supabase-js": "^2.81.1",
     "date-fns": "^4.1.0",
-    "hono": "^4.10.5"
+    "hono": "^4.10.5",
+    "zod": "^4.1.12"
   }
 }

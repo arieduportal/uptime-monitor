@@ -16,7 +16,7 @@ const checkKeyExist = async () => {
 
 export async function generateApiKey(name: string, description?: string) {
     if (await checkKeyExist()) {
-        throw new Error('An API key already exists. Multiple keys are not supported in this version. Delete the existing key to create a new one.');
+        throw new Error('An API key already exists. Multiple keys are not supported in this version. Delete the existing key through the supabase dashboard to create a new one.');
     }
 
     const apiKey = `axh_${randomBytes(100).toString('hex')}`;
@@ -30,7 +30,7 @@ export async function generateApiKey(name: string, description?: string) {
             name,
             description,
             key_hash: hashedKey,
-            key_prefix: apiKey.substring(0, 12), // Store prefix for identification
+            key_prefix: apiKey.substring(0, 12),
             is_active: true,
             created_at: new Date().toISOString()
         })

@@ -18,7 +18,7 @@ export async function submitReport(report: MonitorReport) {
 
     const payload = {
         service: report.service,
-        environment: report.environment,
+        environment: report.environment || "production",
         total_checks: report.total_checks,
         uptime_count: report.uptime_count,
         downtime_count: report.downtime_count,

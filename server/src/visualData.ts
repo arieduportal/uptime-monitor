@@ -1,9 +1,9 @@
-import { supabase, UPTIME_TABLE } from '../config/config';
+import { supabase, REPORTS_TABLE } from '../config/config';
 import type { QueryInput } from '../types';
 
-export async function fetchReports(query: QueryInput) {
+export async function fetchVisualization(query: QueryInput) {
     let supabaseQuery = supabase
-        .from(UPTIME_TABLE)
+        .from(REPORTS_TABLE)
         .select('*', { count: 'exact' });
 
     if (query.environment) {
@@ -48,7 +48,7 @@ export async function fetchReports(query: QueryInput) {
 
 export async function getStats(environment?: string) {
     let query = supabase
-        .from(UPTIME_TABLE)
+        .from(REPORTS_TABLE)
         .select('uptime_percent, average_latency_ms, downtime_count');
 
     if (environment) {
