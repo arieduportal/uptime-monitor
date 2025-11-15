@@ -10,12 +10,10 @@ import { generateApiKey, getApiKeyInfo } from './src/apiKeyGenerator.ts';
 import { validateApiKey } from './src/apiKeyValidator';
 import { submitReport } from './src/submitEndpoint';
 import { fetchVisualization } from './src/visualData';
-import { visualizationPage } from './src/visualization';
 import { fetchReports } from './src/fetchReports.ts';
 
 // Environment
 const NODE_ENV = Bun.env.NODE_ENV || 'development';
-const ALLOWED_ORIGINS = (Bun.env.ALLOWED_ORIGINS || '*').split(',').map(s => s.trim());
 const ALLOWED_USER_AGENT = Bun.env.ALLOWED_USER_AGENT || 'MonitoringClient/1.0';
 
 const rateLimiter = new Map<string, { count: number; resetAt: number }>();
@@ -54,9 +52,9 @@ app.use('*', secureHeaders());
 app.use(
   '*',
   cors({
-    origin: ALLOWED_ORIGINS,
+    origin: '*',
     allowMethods: ['GET', 'POST', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Authorization', 'User-Agent'],
+    allowHeaders: ['Content-Type', 'Authorization', 'User-Agent', 'X-Key-Header'],
     exposeHeaders: ['Content-Length'],
     maxAge: 600,
     credentials: true,
@@ -75,7 +73,7 @@ app.get('/health', (c) => {
 
 // === API Key Generation ===
 const generateKeySchema = z.object({
-  name: z.string().min(1).max(100),
+  name: z.string().min(1).max(10000),
   description: z.string().optional(),
 });
 
@@ -83,6 +81,9 @@ app.post(
   '/api/v1/keys/generate',
   zValidator('json', generateKeySchema),
   async (c) => {
+    if (NODE_ENV !== "development") {
+      return c.json({ error: 'Unauthorized. Can\'t generate API key in production mode' }, 401);
+    }
     try {
       const { name, description } = c.req.valid('json');
       const result = await generateApiKey(name, description || '');
@@ -98,7 +99,7 @@ app.post(
     } catch (error: any) {
       console.error('Generate API Key Error:', error);
       return c.json(
-        { error: 'Failed to generate API key', details: error.message },
+        { error: 'Failed to generate API key', message: error.message },
         500
       );
     }
@@ -122,14 +123,13 @@ app.get('/api/v1/keys/:keyId', async (c) => {
   } catch (error: any) {
     console.error('Fetch API Key Error:', error);
     return c.json(
-      { error: 'Failed to fetch API key info', details: error.message },
+      { error: 'Failed to fetch API key info', message: error.message },
       500
     );
   }
 });
 
 // === Submit Monitoring Report ===
-
 app.post(
   '/api/v1/monitoring/reports',
   rateLimitMiddleware,
@@ -161,12 +161,12 @@ app.post(
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         return c.json(
-          { error: 'Validation failed', details: error.issues },
+          { error: 'Validation failed', message: error.issues },
           400
         );
       }
       return c.json(
-        { error: 'Failed to store report', details: error.message },
+        { error: 'Failed to store report', message: error.message },
         500
       );
     }
@@ -203,7 +203,7 @@ app.post(
     } catch (error: any) {
       console.error('Query Reports Error:', error);
       return c.json(
-        { error: 'Failed to fetch reports', details: error.message },
+        { error: 'Failed to fetch reports', message: error.message },
         500
       );
     }
@@ -237,7 +237,7 @@ app.post(
     } catch (error: any) {
       console.error('Fetch Summary Error:', error);
       return c.json(
-        { error: 'Failed to fetch summary', details: error.message },
+        { error: 'Failed to fetch summary', message: error.message },
         500
       );
     }
