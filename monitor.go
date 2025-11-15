@@ -29,7 +29,7 @@ const (
 	SSLExpiryWarning = 30
 
 	DefaultTimeout    = 30 * time.Second
-	DefaultUserAgent  = "Axiolot-Uptime-Bot"
+	DefaultUserAgent  = "Monitoring Client/1.0"
 	DefaultConcurrent = 5
 
 	MaxRetries        = 3
@@ -75,7 +75,7 @@ type MonitorConfig struct {
 	APIURL         string
 	APIKey         string
 	Timeout        time.Duration
-	UserAgent      string // Axiolot-Uptime-bot
+	UserAgent      string // Monitor User-Agent
 	Concurrent     int
 	Environment    string
 	OutputDir      string
@@ -148,8 +148,16 @@ func IsRetryableError(err error, statusCode int) bool {
 
 func NewMonitorConfig() (*MonitorConfig, error) {
 	domainsStr := os.Getenv("MONITOR_DOMAINS")
+	supabaseUrl := os.Getenv("SUPABASE_URL")
+	supabaseKey := os.Getenv("SUPABASE_KEY")
+	apiUrl := os.Getenv("API_URL")
+
 	if domainsStr == "" {
 		return nil, fmt.Errorf("MONITOR_DOMAINS environment variable not set")
+	}
+
+	if supabaseUrl == "" || supabaseKey == "" || apiUrl == "" {
+		return nil, fmt.Errorf("SUPABASE_URL, SUPABASE_KEY, or API_URL environment variable not set")
 	}
 
 	domains := strings.Split(domainsStr, ",")
@@ -509,7 +517,6 @@ func BuildEmailMessage(from string, to []string, subject string, htmlBody string
 // SendEmailOnFailure sends report via email when JSON file creation fails
 func (m *UptimeMonitor) SendEmailOnFailure(report *MonitorReport, head *string) error {
 	if m.config.EmailAuth == "" || len(m.config.EmailTo) == 0 || m.config.EmailUser == "" {
-		m.logger.Debug("Email configuration not set, skipping email")
 		return nil
 	}
 
@@ -560,7 +567,6 @@ func (m *UptimeMonitor) SendEmailOnFailure(report *MonitorReport, head *string) 
 	)
 
 	if err != nil {
-		m.logger.Error("Failed to send email", zap.Error(err))
 		return fmt.Errorf("failed to send email: %w", err)
 	}
 

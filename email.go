@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -65,6 +64,7 @@ body {
   padding: 20px 30px;
 }
 .header h1 { margin: 0; font-size: 1.6em; }
+.header p {color: #ffffff}
 .section { padding: 20px 30px; }
 h2 { color: #2f2e41; border-bottom: 2px solid #eee; padding-bottom: 5px; }
 .stats {
@@ -249,50 +249,35 @@ func storageChartImage(chartBase64 string) (string, error) {
 	bucket := "uptime-charts"
 
 	if supabaseURL == "" || supabaseKey == "" {
-		fmt.Println("Supabase configuration missing. Skipping chart upload.")
 		return "", fmt.Errorf("missing SUPABASE_URL or SUPABASE_KEY environment variables")
 	}
 
-	storageClient := supa_storage.NewClient("https://<project-reference-id>.supabase.co/storage/v1", "<project-secret-api-key>", nil)
+	projectURL := fmt.Sprintf("%s/storage/v1", supabaseURL)
+	storageClient := supa_storage.NewClient(projectURL, supabaseKey, nil)
 
-	fmt.Println(supabaseKey, supabaseURL)
+	_, err := storageClient.GetBucket(bucket)
+	if err != nil {
+		_, err := storageClient.CreateBucket(bucket, supa_storage.BucketOptions{
+			Public: true,
+		})
+		if err != nil {
+			return "", fmt.Errorf("failed to create bucket: %w", err)
+		}
+	}
 
 	data, err := base64.StdEncoding.DecodeString(chartBase64)
 	if err != nil {
-		fmt.Println("err", err)
-		return "", fmt.Errorf("failed to decode base64 image: %w", err)
+		return "", fmt.Errorf("failed to decode chart image: %w", err)
 	}
-
-	// fmt.Println(data)
 
 	dateFolder := time.Now().Format("2006-01-02")
 	filename := fmt.Sprintf("charts/%s/report_%d.png", dateFolder, time.Now().Unix())
 
-	uploadURL := fmt.Sprintf("%s/storage/v1/s3/%s/%s", supabaseURL, bucket, filename)
-
-	fmt.Println(uploadURL)
-	req, err := http.NewRequest("POST", uploadURL, bytes.NewReader(data))
+	_, err = storageClient.UploadFile(bucket, filename, bytes.NewReader(data))
 	if err != nil {
-		fmt.Println("err", err)
-		return "", fmt.Errorf("failed to create upload request: %w", err)
-	}
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", supabaseKey))
-	req.Header.Set("Content-Type", "image/png")
-	req.Header.Set("x-upsert", "true")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		fmt.Println("err", err)
-		return "", fmt.Errorf("failed to upload to Supabase: %w", err)
-	}
-	fmt.Println("resp", resp)
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 400 {
-		return "", fmt.Errorf("upload failed with status %d", resp.StatusCode)
+		return "", fmt.Errorf("failed to upload chart: %w", err)
 	}
 
-	publicURL := fmt.Sprintf("%s/storage/v1/object/public/%s/%s", supabaseURL, bucket, filename)
-	fmt.Printf("Chart image uploaded to: %s\n", publicURL)
-	return publicURL, nil
+	publicURL := storageClient.GetPublicUrl(bucket, filename)
+	return publicURL.SignedURL, nil
 }
