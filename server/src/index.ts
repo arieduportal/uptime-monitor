@@ -6,6 +6,8 @@ import { secureHeaders } from 'hono/secure-headers';
 import { timing } from 'hono/timing';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { generateApiKey, getApiKeyInfo } from './components/apiKeyGenerator.js';
 import { validateApiKey } from './components/apiKeyValidator.js';
 import { submitReport } from './components/submitEndpoint.js';
@@ -64,6 +66,26 @@ app.use(
   })
 );
 
+app.get('/favicon.ico', (c) => {
+  try {
+    const favicon = readFileSync(join(process.cwd(), 'public', 'favicon.ico'));
+    return new Response(favicon, {
+      headers: { 'Content-Type': 'image/x-icon' }
+    });
+  } catch {
+    return c.notFound();
+  }
+});
+
+app.get('/', (c) => {
+  try {
+    const html = readFileSync(join(process.cwd(), 'public', 'index.html'), 'utf-8');
+    return c.html(html);
+  } catch {
+    return c.notFound();
+  }
+});
+
 
 // Health Check
 app.get('/health', (c) => {
@@ -73,6 +95,15 @@ app.get('/health', (c) => {
     version: '1.0.0',
     env: NODE_ENV,
   });
+});
+
+app.get("/dashboard", (c) => {
+  try {
+    const html = readFileSync(join(process.cwd(), 'public', 'dashboard.html'), 'utf-8');
+    return c.html(html);
+  } catch {
+    return c.notFound();
+  }
 });
 
 // === API Key Generation ===
@@ -309,27 +340,36 @@ app.post(
   }
 );
 
-// 404 Handler
 app.notFound((c) => {
-  return c.json(
-    {
-      error: 'Not Found',
-      message: `Route ${c.req.method} ${c.req.url} not found`,
-    },
-    404
-  );
+  try {
+    const html = readFileSync(join(process.cwd(), 'public', '404.html'), 'utf-8');
+    return c.html(html);
+  } catch {
+    return c.json(
+      {
+        error: 'Not Found',
+        message: `Route ${c.req.method} ${c.req.url} not found`,
+      },
+      404
+    );
+  }
 });
 
 // Global Error Handler
 app.onError((err, c) => {
   console.error('Unhandled Error:', err.stack || err);
-  return c.json(
-    {
-      error: 'Internal Server Error',
-      message: NODE_ENV === 'development' ? err.message : 'Something went wrong',
-    },
-    500
-  );
+  try {
+    const html = readFileSync(join(process.cwd(), 'public', 'error.html'), 'utf-8');
+    return c.html(html, 500);
+  } catch {
+    return c.json(
+      {
+        error: 'Internal Server Error',
+        message: NODE_ENV === 'development' ? err.message : 'Something went wrong',
+      },
+      500
+    );
+  }
 });
 
 export default app;

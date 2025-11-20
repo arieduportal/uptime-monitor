@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 - Page Not Found</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #1a1a1a;
+                color: #e0e0e0;
+            }
+
+            .container {
+                border-color: #444 !important;
+            }
+        }
+
+        .container {
+            text-align: center;
+            padding: 40px;
+            max-width: 600px;
+            background: transparent;
+        }
+
+        .error-code {
+            font-size: 120px;
+            font-weight: bold;
+            line-height: 1;
+            margin-bottom: 20px;
+            letter-spacing: 10px;
+        }
+
+        .error-message {
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .divider {
+            width: 100px;
+            height: 3px;
+            background-color: currentColor;
+            margin: 30px auto;
+        }
+
+        .description {
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+
+        .ascii-art {
+            font-size: 11px;
+            line-height: 1.1;
+            margin-bottom: 30px;
+            white-space: pre;
+            font-family: monospace;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="ascii-art">
+            _______________________________________________
+            / \
+            / ___ ___ ___ ___ ___ \
+            | | | | | | | | | | | | | | | | |
+            | | | | | | | | | | | | | | | | |
+            | |_|_| |_|_| |_|_| ___ |_|_| |_|_| |
+            | ___ ___ ___ | | | ___ ___ |
+            | | | | | | | | | | | | | | | | | | | |
+            | |_|_| |_|_| |_|_| |_|_| |_|_| |_|_| |
+            \ /
+            \_____________________________________________/
+            ¯\_(ツ)_/¯
+        </div>
+        <div class="error-code">404</div>
+        <div class="error-message">Page Not Found</div>
+        <div class="divider"></div>
+        <p class="description">
+            The page you are looking for might have been removed,<br>
+            had its name changed, or is temporarily unavailable.
+        </p>
+    </div>
+</body>
+
+</html>

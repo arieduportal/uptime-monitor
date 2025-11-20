@@ -24,7 +24,6 @@ export async function validateApiKey(c: Context, next: Next) {
 
     const apiKey = parts[1] as string;
 
-    // Validate key format
     if (!apiKey.startsWith('axh_')) {
         return c.json({
             error: 'Unauthorized',
