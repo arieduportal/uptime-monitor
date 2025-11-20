@@ -18,13 +18,11 @@ export async function fetchVisualization(query: QueryInput) {
         supabaseQuery = supabaseQuery.lte('timestamp', query.to);
     }
 
-    // Apply sorting
     const sortBy = query.sortBy || 'timestamp';
     const sortOrder = query.sortOrder || 'desc';
     supabaseQuery = supabaseQuery.order(sortBy, { ascending: sortOrder === 'asc' });
 
-    // Apply pagination
-    const limit = Math.min(query.limit || 50, 100); // Max 100
+    const limit = Math.min(query.limit || 50, 100);
     const offset = query.offset || 0;
     supabaseQuery = supabaseQuery.range(offset, offset + limit - 1);
 
