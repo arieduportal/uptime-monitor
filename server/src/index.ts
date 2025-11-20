@@ -7,7 +7,8 @@ import { timing } from 'hono/timing';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { readFileSync } from 'fs';
-import { join } from 'path';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
 import { generateApiKey, getApiKeyInfo } from './components/apiKeyGenerator.js';
 import { validateApiKey } from './components/apiKeyValidator.js';
 import { submitReport } from './components/submitEndpoint.js';
@@ -21,6 +22,9 @@ const ALLOWED_USER_AGENT = process.env.ALLOWED_USER_AGENT || 'MonitoringClient/1
 const rateLimiter = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT = 50;
 const RATE_WINDOW = 15 * 60 * 1000;
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const rateLimitMiddleware = async (c: any, next: () => Promise<void>) => {
   const forwarded = c.req.header('x-forwarded-for');
@@ -49,6 +53,20 @@ const rateLimitMiddleware = async (c: any, next: () => Promise<void>) => {
   await next();
 };
 
+const serveStaticFile = (filePath: string, contentType: string) => {
+  return (c: any) => {
+    try {
+      const content = readFileSync(join(__dirname, '..', 'public', filePath));
+      return new Response(content, {
+        headers: { 'Content-Type': contentType }
+      });
+    } catch (e) {
+      console.error('File not found:', filePath, e);
+      return c.notFound();
+    }
+  };
+};
+
 const app = new Hono();
 
 app.use('*', logger());
@@ -66,25 +84,8 @@ app.use(
   })
 );
 
-app.get('/favicon.ico', (c) => {
-  try {
-    const favicon = readFileSync(join(process.cwd(), 'public', 'favicon.ico'));
-    return new Response(favicon, {
-      headers: { 'Content-Type': 'image/x-icon' }
-    });
-  } catch {
-    return c.notFound();
-  }
-});
-
-app.get('/', (c) => {
-  try {
-    const html = readFileSync(join(process.cwd(), 'public', 'index.html'), 'utf-8');
-    return c.html(html);
-  } catch {
-    return c.notFound();
-  }
-});
+app.get('/favicon.ico', serveStaticFile('favicon.ico', 'image/x-icon'));
+app.get('/dashboard', serveStaticFile('dashboard.html', 'text/html'));
 
 
 // Health Check
@@ -95,15 +96,6 @@ app.get('/health', (c) => {
     version: '1.0.0',
     env: NODE_ENV,
   });
-});
-
-app.get("/dashboard", (c) => {
-  try {
-    const html = readFileSync(join(process.cwd(), 'public', 'dashboard.html'), 'utf-8');
-    return c.html(html);
-  } catch {
-    return c.notFound();
-  }
 });
 
 // === API Key Generation ===
@@ -342,9 +334,9 @@ app.post(
 
 app.notFound((c) => {
   try {
-    const html = readFileSync(join(process.cwd(), 'public', '404.html'), 'utf-8');
+    const html = readFileSync(join(__dirname, '..', 'public', '404.html'), 'utf-8');
     return c.html(html);
-  } catch(error) {
+  } catch (error) {
     console.log(error)
     return c.json(
       {
@@ -360,7 +352,7 @@ app.notFound((c) => {
 app.onError((err, c) => {
   console.error('Unhandled Error:', err.stack || err);
   try {
-    const html = readFileSync(join(process.cwd(), 'public', 'error.html'), 'utf-8');
+    const html = readFileSync(join(__dirname, '..', 'public', 'error.html'), 'utf-8');
     return c.html(html, 500);
   } catch {
     return c.json(
