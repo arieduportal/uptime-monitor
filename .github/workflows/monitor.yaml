@@ -2,15 +2,15 @@ name: Uptime Monitor
 
 on:
   schedule:
-    - cron: '*/10 * * * *'  # placeholder here
+    - cron: "*/10 * * * *" # Every 10 minutes
   workflow_dispatch:
   push:
     branches:
       - main
     paths:
-      - '**.go'
-      - 'go.mod'
-      - '.github/workflows/monitor.yml'
+      - "**.go"
+      - "go.mod"
+      - ".github/workflows/monitor.yml"
 
 permissions:
   contents: write
@@ -18,7 +18,7 @@ permissions:
 jobs:
   monitor:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -26,7 +26,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version: "1.21"
           cache: true
 
       - name: Install dependencies
@@ -37,6 +37,8 @@ jobs:
           MONITOR_DOMAINS: ${{ secrets.MONITOR_DOMAINS }}
           API_URL: ${{ secrets.API_URL }}
           API_KEY: ${{ secrets.API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           ENVIRONMENT: ${{ secrets.ENVIRONMENT != '' && secrets.ENVIRONMENT || 'production' }}
@@ -59,14 +61,14 @@ jobs:
         with:
           name: uptime-reports-${{ github.run_number }}
           path: reports/
-          retention-days: 30
+          retention-days: 90
 
       - name: Commit reports to repository
         if: github.event_name == 'schedule'
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          
+
           if [ -n "$(git status --porcelain reports/)" ]; then
             git add reports/
             git commit -m "Add uptime report - $(date +'%Y-%m-%d %H:%M:%S UTC')"
