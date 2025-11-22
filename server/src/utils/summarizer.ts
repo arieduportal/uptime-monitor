@@ -40,7 +40,7 @@ export function summarizeDomainData(records: any[], domains?: string[]) {
             let title = "Operational";
             let description = "No issues recorded today";
 
-            if (downCount >= 60) {
+            if (downCount >= 10) {
                 status = "error";
                 title = "Major Outage";
                 description = `${domain} experienced extended downtime (${timeDown}).`;

@@ -44,4 +44,4 @@ go.work
 tmp/
 temp/
 .tmp/
-reports/
+reports/uptime*.json
