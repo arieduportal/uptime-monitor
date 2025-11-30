@@ -800,16 +800,6 @@ MIT License - see [LICENSE](../LICENSE) file for details.
 - 💬 Start a discussion
 - ⭐ Star the repository if you find it useful!
 
-## 🎯 Roadmap
 
-- [ ] Real-time WebSocket updates
-- [ ] Grafana dashboard templates
-- [ ] Advanced analytics endpoints
-- [ ] Multi-tenant support
-- [ ] GraphQL API
-- [ ] Automated anomaly detection
-- [ ] SLA compliance reports
-
----
 
 **Part of the Axiolot Hub Uptime Monitor ecosystem** | [Main Monitor](../README.md) | [Server API](./README.md)
