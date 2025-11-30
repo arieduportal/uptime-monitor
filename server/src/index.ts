@@ -334,23 +334,30 @@ app.post(
 // Dashboard Data
 const dashboardQuerySchema = z.object({
   environment: z.string().optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(50),
+  limit: z.coerce.number().int().min(-1).max(1000).default(-1),
+  offset: z.coerce.number().int().min(0).default(0),
+  fetchAll: z.boolean().default(false),
 });
 
 app.post(
   '/api/v1/dashboard/data',
   validateApiKey,
-  zValidator('query', dashboardQuerySchema),
+  zValidator('json', dashboardQuerySchema),
   async (c) => {
     try {
-      const query = c.req.valid('query');
+      const query = c.req.valid('json');
       const result = await fetchVisualization({
         environment: query.environment,
         limit: query.limit,
-        offset: 0,
+        offset: query.offset,
+        fetchAll: query.fetchAll,
       });
 
-      return c.json(result);
+      return c.json({
+        success: true,
+        message: 'Fetched dashboard data successfully',
+        data: result,
+      });
     } catch (error: any) {
       console.error('Dashboard Data Error:', error.stack || error);
       return c.json({ error: 'Failed to fetch dashboard data', message: error.message }, 500);

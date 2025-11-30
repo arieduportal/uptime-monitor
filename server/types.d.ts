@@ -41,6 +41,7 @@ export interface QueryInput {
     offset?: number;
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
+    fetchAll?: boolean;
 }
 
 export interface DailySummary {
@@ -50,3 +51,20 @@ export interface DailySummary {
     description: string; // human-readable reason or context
     time_down: string;  // formatted downtime duration (e.g. "1h 30m")
 }
+
+export interface VisualizationResult {
+    data: any[];
+    pagination: {
+        total: number;
+        limit: number;
+        offset: number;
+        hasMore: boolean;
+    };
+    stats: {
+        avgUptime: number;
+        avgLatency: number;
+        totalDowntimeIncidents: number;
+        reportCount: number;
+        startDate: CalendarDate | null;
+    };
+};
