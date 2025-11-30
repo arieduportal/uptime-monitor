@@ -1,574 +1,805 @@
-**Uptime Monitor Backend API 📈**
+# 🖥️ Axiolot Hub Uptime Monitor Server
 
-The Uptime Monitor Backend API is a robust and scalable solution for tracking the availability and performance of your services. Built with **Hono** and **Bun**, it provides a secure and efficient way to submit monitoring reports, analyze uptime trends, and manage API keys, all backed by **Supabase** for reliable data storage. Ensure your applications are always up and running! 🚀
+A high-performance monitoring report API built with Bun and Supabase, designed to receive and store uptime monitoring data from the Go monitoring client.
 
-### ✨ Key Features
+[![Bun](https://img.shields.io/badge/Bun-Latest-black?style=flat&logo=bun)](https://bun.sh)
+[![Supabase](https://img.shields.io/badge/Supabase-Powered-3ECF8E?style=flat&logo=supabase)](https://supabase.com)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6?style=flat&logo=typescript)](https://www.typescriptlang.org/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![GitHub Stars](https://img.shields.io/github/stars/arieduportal/uptime-monitor?style=social)](https://github.com/arieduportal/uptime-monitor)
+[![Axiolot Hub logo](https://static.axiolot.com.ng/favicon.ico)](https://axiolot.com.ng)
 
-*   **Comprehensive Uptime Tracking**: Monitor service availability, downtime, and degraded performance with detailed health check results.
-*   **Real-time Status Checks**: Instantly verify the current operational status of multiple domains.
-*   **Secure API Key Management**: Generate, validate, and manage API keys for controlled access to the monitoring system.
-*   **Historical Data Visualization**: Query and retrieve past monitoring reports with flexible filtering for analytical dashboards.
-*   **Daily Service Summaries**: Generate aggregated daily health summaries for specific domains, providing a quick overview of performance trends.
-*   **Robust Data Validation**: Ensures data integrity for all incoming reports and queries using Zod schemas.
-*   **API Rate Limiting**: Protects the API from abuse and ensures fair resource distribution among consumers.
+## ✨ Features
 
-### 🛠️ Technologies Used
+### Core Capabilities
+- ⚡ **Lightning Fast** - Built on Bun runtime for maximum performance
+- 🗄️ **Supabase Integration** - PostgreSQL database with real-time capabilities
+- 🔒 **API Key Authentication** - Secure Bearer token authentication
+- 📊 **Historical Storage** - Store and query monitoring reports over time
+- 🔍 **Rich Querying** - Filter by environment, status, date range, and more
+- 📈 **Analytics Ready** - Structured data for uptime trends and SLA reports
 
-| Category        | Technology                                                                                                    | Description                                                                 |
-| :-------------- | :------------------------------------------------------------------------------------------------------------ | :-------------------------------------------------------------------------- |
-| **Runtime**     | [Bun](https://bun.sh/)                                                                                        | A fast JavaScript runtime, transpiler, and package manager.                 |
-| **Framework**   | [Hono.js](https://hono.dev/)                                                                                  | A lightweight, ultra-fast web framework for the edge and Node.js environments. |
-| **Database**    | [Supabase](https://supabase.com/)                                                                             | Open-source Firebase alternative providing a PostgreSQL database.           |
-| **Validation**  | [Zod](https://zod.dev/)                                                                                       | TypeScript-first schema declaration and validation library.                 |
-| **Middleware**  | [Hono/CORS](https://hono.dev/middleware/builtin/cors)                                                         | Configures Cross-Origin Resource Sharing.                                   |
-|                 | [Hono/Logger](https://hono.dev/middleware/builtin/logger)                                                     | Request logging middleware.                                                 |
-|                 | [Hono/Secure Headers](https://hono.dev/middleware/builtin/secure-headers)                                     | Enhances security by setting various HTTP response headers.                 |
-|                 | [Hono/Timing](https://hono.dev/middleware/builtin/timing)                                                     | Provides server-side timing information for performance analysis.           |
-| **Type Safety** | [TypeScript](https://www.typescriptlang.org/)                                                                 | Strongly typed programming language that builds on JavaScript.              |
-| **Date Handling**| [@internationalized/date](https://react-spectrum.adobe.com/internationalized/date.html), [date-fns](https://date-fns.org/) | Robust libraries for parsing, formatting, and manipulating dates.           |
+### Reliability & Security
+- 🛡️ **Input Validation** - Comprehensive request validation with detailed error messages
+- 🔐 **Environment-based Config** - Secure configuration management
+- 📝 **Structured Logging** - Production-grade request/response logging
+- ⚠️ **Error Handling** - Graceful error handling with meaningful responses
+- 🚀 **TypeScript** - Full type safety and IntelliSense support
 
-# Uptime Monitor Backend API
+## 📋 Table of Contents
 
-## Overview
-This backend API, built with Hono and Bun, serves as the central hub for ingesting, storing, and retrieving uptime monitoring data. It leverages Supabase as its PostgreSQL database and incorporates robust API key authentication and data validation using Zod schemas to ensure data integrity and secure access.
+- [Quick Start](#-quick-start)
+- [Installation](#-installation)
+- [Configuration](#-configuration)
+- [Database Setup](#-database-setup)
+- [API Endpoints](#-api-endpoints)
+- [Usage Examples](#-usage-examples)
+- [Monitoring Client Integration](#-monitoring-client-integration)
+- [Querying Historical Data](#-querying-historical-data)
+- [Deployment](#-deployment)
+- [Development](#-development)
+- [Troubleshooting](#-troubleshooting)
 
-## Core Backend Features
-- `Hono`: Lightweight and fast web framework for handling API routes and middleware.
-- `Bun`: High-performance JavaScript runtime for efficient server operations.
-- `Supabase`: PostgreSQL-backed data storage for monitoring reports, API keys, and summaries.
-- `Zod`: Runtime validation for incoming API payloads, ensuring data correctness and type safety.
-- `API Key Authentication`: Bearer token authentication with SHA256 hashing for secure API access.
-- `Rate Limiting`: Prevents abuse and ensures fair resource distribution across API consumers.
-- `CORS Management`: Configured to allow cross-origin requests for broad client compatibility.
+## 🚀 Quick Start
 
-## Getting Started
-### Installation
-To get this project running on your local machine, follow these steps:
+```bash
+# Navigate to server directory
+cd server
 
-*   📥 **Clone the repository:**
-    ```bash
-    git clone https://github.com/arinzejustin/uptime-monitor.git
-    cd uptime-monitor/server
-    ```
-*   📦 **Install dependencies:**
-    ```bash
-    bun install
-    ```
-*   ➕ **Set up your Supabase database:**
-    Ensure you have a Supabase project configured. Create an `.env` file in the `server/` directory based on `.env.example` and fill in your Supabase credentials and desired table names. Then, run the database setup script:
-    ```bash
-    cp .env.example .env
-    # Edit .env with your Supabase credentials and table names (e.g., REPORTS_TABLE=reports, API_KEY_TABLE=api_keys, SUMMARY_TABLE=summary)
-    bun run setup-db
-    ```
-*   🚀 **Start the development server:**
-    ```bash
-    bun dev
-    ```
-    The API will be accessible at `http://localhost:3000` by default.
+# Install dependencies
+bun install
+
+# Set up environment variables
+cp .env.example .env
+# Edit .env with your Supabase credentials
+
+# Run database migrations
+bun run migrate
+
+# Start the server
+bun run dev
+```
+
+## 📦 Installation
+
+### Prerequisites
+
+- Bun (latest version)
+- Supabase account and project
+- Git
+
+### Local Setup
+
+1. **Navigate to the server directory:**
+   ```bash
+   cd server
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   bun install
+   ```
+
+3. **Configure environment variables:**
+   ```bash
+   cp .env.example .env
+   ```
+   
+   Edit `.env` with your configuration (see [Configuration](#-configuration))
+
+4. **Set up the database:**
+   ```bash
+   # Run migrations to create tables
+   bun run migrate
+   ```
+
+5. **Start the development server:**
+   ```bash
+   bun run dev
+   ```
+
+The server will start on `http://localhost:3000` (or your configured port).
+
+## ⚙️ Configuration
 
 ### Environment Variables
-*   `SUPABASE_URL`: `https://your-supabase-url.supabase.co` (Required)
-*   `SUPABASE_KEY`: `your-supabase-anon-key` (Required)
-*   `USER_AGENT`: `Axiolot-Uptime-Bot` (Required, client User-Agent must match this prefix for report submission)
-*   `REPORTS_TABLE`: `reports` (Required, database table name for monitoring reports)
-*   `API_KEY_TABLE`: `api_keys` (Required, database table name for API keys)
-*   `SUMMARY_TABLE`: `summary` (Required, database table name for daily summaries)
 
-## API Documentation
-### Base URL
-`http://localhost:3000` or `https://[your-deployed-url]`
+Create a `.env` file in the `server` directory:
 
-### Endpoints
-#### `GET /health`
-**Overview**: Checks the operational status of the API server.
-**Request**:
-No payload required.
+```env
+# Server Configuration
+PORT=3000
+NODE_ENV=production
 
-**Response**:
-```json
-{
-  "status": "healthy",
-  "timestamp": "2023-10-27T10:00:00.000Z",
-  "version": "1.0.0",
-  "env": "development"
-}
+# API Security
+API_KEY=your-secret-api-key-here
+
+# Supabase Configuration
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_KEY=your-supabase-service-role-key
+
+# Optional: CORS Configuration
+ALLOWED_ORIGINS=https://yourdomain.com,https://app.yourdomain.com
+
+# Optional: Rate Limiting
+RATE_LIMIT_REQUESTS=100
+RATE_LIMIT_WINDOW=60000
 ```
 
-**Errors**:
-- None explicitly defined for this endpoint in the code; standard HTTP success/error codes apply.
+### Configuration Details
 
-#### `POST /api/v1/keys/generate`
-**Overview**: Generates a new API key for accessing protected endpoints. This endpoint is only available in the `development` environment for security reasons.
-**Request**:
-```json
-{
-  "name": "My Monitoring Service Key",
-  "description": "API key for submitting uptime reports from my server."
-}
-```
-**Required fields**: `name` (string, min 1, max 10000 characters)
-**Optional fields**: `description` (string)
+| Variable | Required | Description | Example |
+|----------|----------|-------------|---------|
+| `PORT` | No | Server port | `3000` |
+| `NODE_ENV` | No | Environment mode | `production`, `development` |
+| `API_KEY` | Yes | Secret key for API authentication | `sk_live_abc123...` |
+| `SUPABASE_URL` | Yes | Your Supabase project URL | `https://xyz.supabase.co` |
+| `SUPABASE_SERVICE_KEY` | Yes | Supabase service role key | `eyJ...` |
+| `ALLOWED_ORIGINS` | No | Comma-separated allowed CORS origins | `https://app.com` |
+| `RATE_LIMIT_REQUESTS` | No | Max requests per window | `100` |
+| `RATE_LIMIT_WINDOW` | No | Rate limit window (ms) | `60000` |
 
-**Response**:
-```json
-{
-  "success": true,
-  "message": "API key generated successfully",
-  "data": {
-    "id": "a1b2c3d4-e5f6-7890-1234-567890abcdef",
-    "api_key": "axh_f6e7d8c9b0a1234567890abcdef1234567890...",
-    "name": "My Monitoring Service Key",
-    "key_prefix": "axh_f6e7d8c9b0",
-    "created_at": "2023-10-27T10:05:00.000Z",
-    "warning": "Store this API key securely. It will not be shown again."
-  }
-}
-```
+### Getting Supabase Credentials
 
-**Errors**:
-- `401 Unauthorized`: Cannot generate API key in production mode.
-- `400 Bad Request`: Validation failed (e.g., `name` is missing or exceeds max length).
-- `500 Internal Server Error`: Failed to store API key in the database, or an API key already exists (only one key supported in this version).
+1. **Create a Supabase Project:**
+   - Go to [supabase.com](https://supabase.com)
+   - Click "New Project"
+   - Note your project URL and keys
 
-#### `GET /api/v1/keys/:keyId`
-**Overview**: Retrieves metadata for a specific API key using its ID.
-**Request**:
-Path parameter `keyId` is the UUID of the API key.
-No payload required.
+2. **Find Your Credentials:**
+   - Navigate to Project Settings → API
+   - Copy `URL` → use as `SUPABASE_URL`
+   - Copy `service_role` key → use as `SUPABASE_SERVICE_KEY`
+   - ⚠️ **Never expose the service role key publicly**
 
-**Response**:
-```json
-{
-  "success": true,
-  "data": {
-    "id": "a1b2c3d4-e5f6-7890-1234-567890abcdef",
-    "name": "My Monitoring Service Key",
-    "description": "API key for submitting uptime reports from my server.",
-    "key_prefix": "axh_f6e7d8c9b0",
-    "is_active": true,
-    "created_at": "2023-10-27T10:05:00.000Z",
-    "last_used_at": "2023-10-27T11:30:00.000Z",
-    "usage_count": 125
-  }
-}
+## 🗄️ Database Setup
+
+### Database Schema
+
+The server uses a single table to store monitoring reports:
+
+```sql
+CREATE TABLE monitoring_reports (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  service VARCHAR(255) NOT NULL,
+  environment VARCHAR(100) NOT NULL,
+  total_checks INTEGER NOT NULL,
+  uptime_count INTEGER NOT NULL,
+  downtime_count INTEGER NOT NULL,
+  degraded_count INTEGER NOT NULL,
+  uptime_percent DECIMAL(5,2) NOT NULL,
+  average_latency_ms DECIMAL(10,2),
+  timestamp TIMESTAMPTZ NOT NULL,
+  results JSONB NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  
+  -- Indexes for common queries
+  INDEX idx_environment ON monitoring_reports(environment),
+  INDEX idx_timestamp ON monitoring_reports(timestamp),
+  INDEX idx_created_at ON monitoring_reports(created_at)
+);
 ```
 
-**Errors**:
-- `400 Bad Request`: Invalid `keyId` format or length.
-- `404 Not Found`: API key with the specified ID does not exist.
-- `500 Internal Server Error`: Failed to fetch API key information from the database.
+### Running Migrations
 
-#### `POST /api/v1/monitoring/reports`
-**Overview**: Submits a detailed monitoring report for a service. Requires API key authentication and a specific `User-Agent` header for enhanced security.
-**Request**:
-Requires `Authorization: Bearer <API_KEY>` header and a `User-Agent` header that starts with the value of `ALLOWED_USER_AGENT` environment variable (default: `Axiolot-Uptime-Bot`).
-```json
+```bash
+# Run all migrations
+bun run migrate
+
+# Rollback last migration
+bun run migrate:rollback
+
+# Check migration status
+bun run migrate:status
+```
+
+### Manual Setup via Supabase Dashboard
+
+If you prefer to set up the table manually:
+
+1. Go to your Supabase Dashboard
+2. Navigate to **SQL Editor**
+3. Run the schema SQL above
+4. Enable Row Level Security (RLS) if needed:
+   ```sql
+   ALTER TABLE monitoring_reports ENABLE ROW LEVEL SECURITY;
+   
+   -- Allow service role to do everything
+   CREATE POLICY "Service role has full access"
+   ON monitoring_reports
+   FOR ALL
+   TO service_role
+   USING (true)
+   WITH CHECK (true);
+   ```
+
+## 🔌 API Endpoints
+
+### POST /api/monitoring/reports
+
+Submit a new monitoring report.
+
+**Authentication:** Required (Bearer token)
+
+**Request:**
+```http
+POST /api/monitoring/reports HTTP/1.1
+Host: localhost:3000
+Content-Type: application/json
+Authorization: Bearer your-api-key
+
 {
-  "service": "api-gateway",
+  "service": "Uptime Monitor",
   "environment": "production",
-  "total_checks": 100,
-  "uptime_count": 98,
+  "total_checks": 3,
+  "uptime_count": 2,
   "downtime_count": 1,
-  "degraded_count": 1,
-  "uptime_percent": 98.00,
-  "average_latency_ms": 150.75,
-  "timestamp": "2023-10-27T10:30:00.000Z",
+  "degraded_count": 0,
+  "uptime_percent": 66.67,
+  "average_latency_ms": 250.5,
+  "timestamp": "2025-11-09T10:30:00Z",
   "results": [
     {
       "domain": "example.com",
-      "url": "https://example.com/health",
+      "url": "https://example.com",
       "status": "up",
       "status_code": 200,
-      "response_time_ms": 120,
+      "response_time_ms": 150,
       "is_ssl": true,
-      "ssl_expiry": "2024-12-31T00:00:00.000Z",
-      "ssl_days_left": "400",
-      "error_message": "",
-      "content_length": 1234,
-      "timestamp": "2023-10-27T10:30:00.000Z",
-      "checked_at": "2023-10-27T10:30:00.000Z"
-    },
-    {
-      "domain": "api.example.com",
-      "url": "https://api.example.com/status",
-      "status": "degraded",
-      "status_code": 503,
-      "response_time_ms": 5000,
-      "is_ssl": true,
-      "ssl_expiry": "2024-12-31T00:00:00.000Z",
-      "ssl_days_left": "400",
-      "error_message": "Service unavailable",
-      "content_length": 0,
-      "timestamp": "2023-10-27T10:30:00.000Z",
-      "checked_at": "2023-10-27T10:30:00.000Z"
+      "ssl_expiry": "2025-12-31T23:59:59Z",
+      "ssl_days_left": 55,
+      "content_length": 1024,
+      "timestamp": "2025-11-09T10:30:00Z",
+      "checked_at": "2025-11-09T10:30:00Z"
     }
   ]
 }
 ```
-**Required fields**: `service` (string), `environment` (string), `total_checks` (number), `uptime_count` (number), `downtime_count` (number), `degraded_count` (number), `uptime_percent` (number, 0-100), `average_latency_ms` (number), `results` (non-empty array). Each `HealthCheckResult` object within `results` also has required fields (refer to `types.d.ts`).
 
-**Response**:
+**Response (Success):**
 ```json
 {
   "success": true,
   "message": "Report stored successfully",
-  "data": {
-    "id": "f5e4d3c2-b1a0-9876-5432-10fedcba9876",
-    "created_at": "2023-10-27T10:30:00.000Z"
-  }
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "timestamp": "2025-11-09T10:30:00.000Z"
 }
 ```
 
-**Errors**:
-- `429 Too Many Requests`: Rate limit exceeded for the client IP.
-- `401 Unauthorized`: Missing or invalid API key, or API key is deactivated.
-- `403 Forbidden`: Invalid `User-Agent` header (must start with the configured `ALLOWED_USER_AGENT`).
-- `400 Bad Request`: Validation failed (e.g., missing required fields like `service` or `environment`, `uptime_percent` out of range, `results` array is empty).
-- `500 Internal Server Error`: Database error or other server-side failure.
-
-#### `POST /api/v1/reports/query/visualization`
-**Overview**: Fetches monitoring reports based on specified query parameters, intended for dashboard visualization. Requires API key authentication.
-**Request**:
-Requires `Authorization: Bearer <API_KEY>` header.
+**Response (Error):**
 ```json
 {
-  "environment": "production",
-  "status": "up",
-  "from": "2023-10-01T00:00:00.000Z",
-  "to": "2023-10-27T23:59:59.000Z",
-  "limit": 50,
-  "offset": 0,
-  "sortBy": "timestamp",
-  "sortOrder": "desc",
-  "fetchAll": false
+  "success": false,
+  "error": "Invalid request: missing required field 'environment'"
 }
 ```
-**Optional fields**:
-- `environment` (string)
-- `url` (string, valid URL format)
-- `status` (string, must be `up` or `down`)
-- `from` (string, ISO 8601 date/time string)
-- `to` (string, ISO 8601 date/time string)
-- `limit` (number, integer 1-1000, default 50)
-- `offset` (number, integer >=0, default 0)
-- `sortBy` (string, e.g., `timestamp`)
-- `sortOrder` (string, must be `asc` or `desc`)
-- `fetchAll` (boolean, default `false`. If `true`, `limit` and `offset` are ignored and all matching records are returned.)
 
-**Response**:
+### GET /api/monitoring/reports
+
+Retrieve monitoring reports with optional filters.
+
+**Authentication:** Required (Bearer token)
+
+**Query Parameters:**
+
+| Parameter | Type | Description | Example |
+|-----------|------|-------------|---------|
+| `environment` | string | Filter by environment | `production` |
+| `from` | ISO date | Start date filter | `2025-11-01T00:00:00Z` |
+| `to` | ISO date | End date filter | `2025-11-09T23:59:59Z` |
+| `limit` | number | Max results (default: 100) | `50` |
+| `offset` | number | Pagination offset | `0` |
+
+**Request:**
+```http
+GET /api/monitoring/reports?environment=production&limit=10 HTTP/1.1
+Host: localhost:3000
+Authorization: Bearer your-api-key
+```
+
+**Response:**
 ```json
 {
   "success": true,
   "data": [
     {
-      "id": "uuid-report-1",
-      "service": "api-gateway",
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "service": "Uptime Monitor",
       "environment": "production",
-      "total_checks": 100,
-      "uptime_count": 99,
+      "total_checks": 3,
+      "uptime_count": 2,
       "downtime_count": 1,
       "degraded_count": 0,
-      "uptime_percent": 99.00,
-      "average_latency_ms": 120.50,
-      "timestamp": "2023-10-27T10:00:00.000Z",
-      "results": [
-        {
-          "domain": "example.com",
-          "url": "https://example.com",
-          "status": "up",
-          "status_code": 200,
-          "response_time_ms": 120,
-          "is_ssl": true,
-          "ssl_expiry": "2024-12-31T00:00:00.000Z",
-          "ssl_days_left": "400",
-          "error_message": "",
-          "content_length": 1234,
-          "timestamp": "2023-10-27T10:00:00.000Z",
-          "checked_at": "2023-10-27T10:00:00.000Z"
-        }
-      ],
-      "created_at": "2023-10-27T10:00:00.000Z",
-      "updated_at": "2023-10-27T10:00:00.000Z"
+      "uptime_percent": 66.67,
+      "average_latency_ms": 250.5,
+      "timestamp": "2025-11-09T10:30:00Z",
+      "results": [...],
+      "created_at": "2025-11-09T10:30:01Z"
     }
   ],
-  "pagination": {
-    "total": 1000,
-    "limit": 50,
-    "offset": 0,
-    "hasMore": true
-  }
+  "count": 1,
+  "limit": 10,
+  "offset": 0
 }
 ```
-If `fetchAll` is `true`:
+
+### GET /api/health
+
+Health check endpoint (no authentication required).
+
+**Request:**
+```http
+GET /api/health HTTP/1.1
+Host: localhost:3000
+```
+
+**Response:**
 ```json
 {
-  "success": true,
-  "data": [
-    { /* All MonitorReport objects matching query */ }
-  ],
-  "pagination": {
-    "total": 1000,
-    "limit": 1000,
-    "offset": 0,
-    "hasMore": false
-  }
+  "status": "ok",
+  "timestamp": "2025-11-09T10:30:00.000Z",
+  "version": "1.0.0"
 }
 ```
 
-**Errors**:
-- `401 Unauthorized`: Missing or invalid API key, or API key is deactivated.
-- `400 Bad Request`: Validation failed for query parameters (e.g., invalid `status` value, `limit` out of range).
-- `500 Internal Server Error`: Failed to fetch reports from the database.
+## 📘 Usage Examples
 
-#### `POST /api/v1/reports/query/summary`
-**Overview**: Fetches and summarizes monitoring data for specified domains over a period, with caching capabilities. Requires API key authentication.
-**Request**:
-Requires `Authorization: Bearer <API_KEY>` header.
-```json
-{
-  "domains": [
-    "example.com",
-    "api.example.com"
-  ],
-  "limit": 100,
-  "days": 30,
-  "useCache": true
-}
-```
-**Required fields**: `domains` (array of strings, must contain at least one domain).
-**Optional fields**:
-- `limit` (number, integer 1-1000, default 1000)
-- `days` (number, integer 1-60, default 60)
-- `useCache` (boolean, default `true`)
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Fetched summary successfully",
-  "data": {
-    "example.com": [
-      {
-        "date": "Oct 27 2023",
-        "status": "ok",
-        "title": "Operational",
-        "description": "No issues recorded today",
-        "time_down": "0m"
-      },
-      {
-        "date": "Oct 26 2023",
-        "status": "warning",
-        "title": "Partial Outage",
-        "description": "example.com had intermittent downtime (1h 10m).",
-        "time_down": "1h 10m"
-      }
-    ],
-    "api.example.com": [
-      {
-        "date": "Oct 27 2023",
-        "status": "error",
-        "title": "Major Outage",
-        "description": "api.example.com experienced extended downtime (2h 0m).",
-        "time_down": "2h 0m"
-      }
-    ]
-  }
-}
-```
-
-**Errors**:
-- `429 Too Many Requests`: Rate limit exceeded for the client IP.
-- `401 Unauthorized`: Missing or invalid API key, or API key is deactivated.
-- `400 Bad Request`: Validation failed for query parameters (e.g., `domains` array is empty, `days` out of range).
-- `500 Internal Server Error`: Failed to fetch or summarize reports from the database.
-
-#### `POST /api/v1/concurrent/status`
-**Overview**: Performs a quick HEAD request to verify the current "Up" or "Down" status of multiple domains simultaneously. Requires API key authentication.
-**Request**:
-Requires `Authorization: Bearer <API_KEY>` header.
-```json
-{
-  "domains": "example.com,api.example.com,down.example.org"
-}
-```
-**Required fields**: `domains` (string, comma-separated list of domain names).
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "down.example.org is down, another.domain.com is down",
-  "data": {
-    "example.com": "Up",
-    "api.example.com": "Up",
-    "down.example.org": "Down"
-  }
-}
-```
-
-**Errors**:
-- `401 Unauthorized`: Missing or invalid API key, or API key is deactivated.
-- `400 Bad Request`: Validation failed (e.g., `domains` field is empty).
-- `500 Internal Server Error`: Failed to perform status checks.
-
-#### `POST /api/v1/dashboard/data`
-**Overview**: Retrieves data optimized for dashboard display, including a paginated list of reports and aggregate statistics. Requires API key authentication.
-**Request**:
-Requires `Authorization: Bearer <API_KEY>` header.
-```json
-{
-  "environment": "production",
-  "limit": 50,
-  "offset": 0,
-  "fetchAll": false
-}
-```
-**Optional fields**:
-- `environment` (string)
-- `limit` (number, integer -1 to 1000, default -1. If -1, fetches all records unless `fetchAll` is explicitly false and pagination limits are used).
-- `offset` (number, integer >=0, default 0)
-- `fetchAll` (boolean, default `false`. If `true`, `limit` and `offset` are ignored and all matching records are returned.)
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Fetched dashboard data successfully",
-  "data": {
-    "data": [
-      {
-        "id": "uuid-report-1",
-        "service": "api-gateway",
-        "environment": "production",
-        "total_checks": 100,
-        "uptime_count": 99,
-        "downtime_count": 1,
-        "degraded_count": 0,
-        "uptime_percent": 99.00,
-        "average_latency_ms": 120.50,
-        "timestamp": "2023-10-27T10:00:00.000Z",
-        "results": [
-          { /* HealthCheckResult object */ }
-        ],
-        "created_at": "2023-10-27T10:00:00.000Z",
-        "updated_at": "2023-10-27T10:00:00.000Z"
-      }
-    ],
-    "pagination": {
-      "total": 500,
-      "limit": 50,
-      "offset": 0,
-      "hasMore": true
-    },
-    "stats": {
-      "avgUptime": 99.85,
-      "avgLatency": 105.2,
-      "totalIncidents": 15,
-      "reportCount": 500,
-      "startDate": { "year": 2023, "month": 9, "day": 1 }
-    }
-  }
-}
-```
-
-**Errors**:
-- `401 Unauthorized`: Missing or invalid API key, or API key is deactivated.
-- `400 Bad Request`: Validation failed for query parameters.
-- `500 Internal Server Error`: Failed to fetch dashboard data.
-
-### 🚀 API Usage Examples
-
-Below are `cURL` examples demonstrating how to interact with some of the core API endpoints. Remember to replace placeholder values like `<YOUR_API_KEY>` and adjust JSON bodies as needed.
-
-#### 1. Generate an API Key (Development Mode Only)
+### Submit a Report (cURL)
 
 ```bash
-curl -X POST \
-  http://localhost:3000/api/v1/keys/generate \
-  -H 'Content-Type: application/json' \
+curl -X POST http://localhost:3000/api/monitoring/reports \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your-api-key" \
   -d '{
-    "name": "My Monitoring Client",
-    "description": "Key for my custom uptime monitoring script."
-  }'
-```
-
-#### 2. Submit a Monitoring Report
-
-First, ensure you have an API key and set your `USER_AGENT` environment variable to `Axiolot-Uptime-Bot`.
-
-```bash
-curl -X POST \
-  http://localhost:3000/api/v1/monitoring/reports \
-  -H 'Content-Type: application/json' \
-  -H 'Authorization: Bearer <YOUR_API_KEY>' \
-  -H 'User-Agent: Axiolot-Uptime-Bot' \
-  -d '{
-    "service": "my-web-app",
+    "service": "Uptime Monitor",
     "environment": "production",
-    "total_checks": 1,
-    "uptime_count": 1,
+    "total_checks": 3,
+    "uptime_count": 3,
     "downtime_count": 0,
     "degraded_count": 0,
     "uptime_percent": 100.00,
-    "average_latency_ms": 75.5,
-    "timestamp": "2023-10-27T15:00:00.000Z",
-    "results": [
-      {
-        "domain": "mywebapp.com",
-        "url": "https://mywebapp.com/",
-        "status": "up",
-        "status_code": 200,
-        "response_time_ms": 75,
-        "is_ssl": true,
-        "ssl_expiry": "2024-11-01T00:00:00.000Z",
-        "ssl_days_left": "365",
-        "error_message": "",
-        "content_length": 5120,
-        "timestamp": "2023-10-27T15:00:00.000Z",
-        "checked_at": "2023-10-27T15:00:00.000Z"
-      }
-    ]
+    "average_latency_ms": 150.0,
+    "timestamp": "2025-11-09T10:30:00Z",
+    "results": []
   }'
 ```
 
-#### 3. Query Reports for Visualization
+### Query Reports (cURL)
 
 ```bash
-curl -X POST \
-  http://localhost:3000/api/v1/reports/query/visualization \
-  -H 'Content-Type: application/json' \
-  -H 'Authorization: Bearer <YOUR_API_KEY>' \
-  -d '{
-    "environment": "production",
-    "limit": 10,
-    "sortBy": "timestamp",
-    "sortOrder": "desc"
-  }'
+# Get last 10 production reports
+curl -X GET "http://localhost:3000/api/monitoring/reports?environment=production&limit=10" \
+  -H "Authorization: Bearer your-api-key"
+
+# Get reports from date range
+curl -X GET "http://localhost:3000/api/monitoring/reports?from=2025-11-01T00:00:00Z&to=2025-11-09T23:59:59Z" \
+  -H "Authorization: Bearer your-api-key"
 ```
 
-#### 4. Get Concurrent Status of Domains
+### Submit Report (JavaScript/TypeScript)
+
+```typescript
+const report = {
+  service: "Uptime Monitor",
+  environment: "production",
+  total_checks: 3,
+  uptime_count: 3,
+  downtime_count: 0,
+  degraded_count: 0,
+  uptime_percent: 100.00,
+  average_latency_ms: 150.0,
+  timestamp: new Date().toISOString(),
+  results: []
+};
+
+const response = await fetch('http://localhost:3000/api/monitoring/reports', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${process.env.API_KEY}`
+  },
+  body: JSON.stringify(report)
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+## 🔗 Monitoring Client Integration
+
+### Configure the Go Monitor
+
+In your main uptime monitor configuration:
 
 ```bash
-curl -X POST \
-  http://localhost:3000/api/v1/concurrent/status \
-  -H 'Content-Type: application/json' \
-  -H 'Authorization: Bearer <YOUR_API_KEY>' \
-  -d '{
-    "domains": "google.com,supabase.com,example.com"
-  }'
+# Set the server URL and API key
+export API_URL="http://localhost:3000/api/monitoring/reports"
+export API_KEY="your-api-key"
 ```
 
-### 🧑‍💻 Author Info
+Or in GitHub Actions secrets:
+- `API_URL`: `https://your-domain.com/api/monitoring/reports`
+- `API_KEY`: Your generated API key
 
-*   **Axiolot Hub**: [LinkedIn](https://linkedin.com/in/yourprofile) | [Twitter](https://twitter.com/axiolothub) | [Website](https://axiolot.com.ng)
+### Automatic Report Submission
 
----
+The Go monitoring client will automatically:
+1. Run health checks on configured domains
+2. Generate JSON report
+3. Submit to your server endpoint
+4. Retry on transient failures
+5. Log submission status
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Hono.js](https://img.shields.io/badge/Hono.js-007bff?style=for-the-badge&logo=hono&logoColor=white)](https://hono.dev/)
-[![Bun](https://img.shields.io/badge/Bun-000000?style=for-the-badge&logo=bun&logoColor=white)](https://bun.sh/)
-[![Supabase](https://img.shields.io/badge/Supabase-17181F?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
-[![Zod](https://img.shields.io/badge/Zod-3E67B1?style=for-the-badge&logo=zod&logoColor=white)](https://zod.dev/)
-[![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
-[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/arinzejustin/uptime-monitor/main.yml?branch=main&style=for-the-badge)](https://github.com/arieduca/uptime-monitor/actions)
+**Monitor logs will show:**
+```json
+{
+  "level": "info",
+  "msg": "Successfully submitted report to API",
+  "status_code": 200
+}
+```
+
+## 📊 Querying Historical Data
+
+### Using Supabase Dashboard
+
+1. Go to your Supabase Dashboard
+2. Navigate to **Table Editor**
+3. Select `monitoring_reports` table
+4. Use filters to query data
+
+### SQL Queries
+
+```sql
+-- Get average uptime for last 24 hours
+SELECT 
+  environment,
+  AVG(uptime_percent) as avg_uptime,
+  COUNT(*) as check_count
+FROM monitoring_reports
+WHERE created_at >= NOW() - INTERVAL '24 hours'
+GROUP BY environment;
+
+-- Find all downtime incidents
+SELECT 
+  environment,
+  timestamp,
+  downtime_count,
+  results
+FROM monitoring_reports
+WHERE downtime_count > 0
+ORDER BY timestamp DESC;
+
+-- Calculate SLA compliance (99.9% uptime)
+SELECT 
+  environment,
+  COUNT(*) as total_checks,
+  SUM(CASE WHEN uptime_percent >= 99.9 THEN 1 ELSE 0 END) as sla_compliant,
+  ROUND(
+    (SUM(CASE WHEN uptime_percent >= 99.9 THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)) * 100, 
+    2
+  ) as sla_compliance_rate
+FROM monitoring_reports
+WHERE created_at >= NOW() - INTERVAL '30 days'
+GROUP BY environment;
+```
+
+### Programmatic Querying
+
+```typescript
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_KEY!
+);
+
+// Get reports for last 7 days
+const { data, error } = await supabase
+  .from('monitoring_reports')
+  .select('*')
+  .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+  .order('created_at', { ascending: false });
+
+if (error) {
+  console.error('Query error:', error);
+} else {
+  console.log(`Found ${data.length} reports`);
+}
+```
+
+## 🚀 Deployment
+
+### Deploy to Production
+
+1. **Set Production Environment Variables**
+   ```bash
+   export NODE_ENV=production
+   export API_KEY=your-production-api-key
+   export SUPABASE_URL=your-production-supabase-url
+   export SUPABASE_SERVICE_KEY=your-production-service-key
+   ```
+
+2. **Build the Application**
+   ```bash
+   bun run build
+   ```
+
+3. **Start Production Server**
+   ```bash
+   bun run start
+   ```
+
+### Deploy to Cloud Platforms
+
+#### Vercel / Netlify
+
+```bash
+# Install Vercel CLI
+npm i -g vercel
+
+# Deploy
+vercel --prod
+```
+
+Add environment variables in the dashboard.
+
+#### Railway
+
+1. Connect your GitHub repository
+2. Add environment variables
+3. Deploy automatically on push
+
+#### Fly.io
+
+```bash
+# Install Fly CLI
+curl -L https://fly.io/install.sh | sh
+
+# Initialize and deploy
+fly launch
+fly secrets set API_KEY=your-key
+fly secrets set SUPABASE_URL=your-url
+fly secrets set SUPABASE_SERVICE_KEY=your-key
+fly deploy
+```
+
+#### Docker
+
+```dockerfile
+FROM oven/bun:latest
+
+WORKDIR /app
+
+COPY package.json bun.lockb ./
+RUN bun install --frozen-lockfile
+
+COPY . .
+
+EXPOSE 3000
+
+CMD ["bun", "run", "start"]
+```
+
+```bash
+# Build and run
+docker build -t uptime-monitor-server .
+docker run -p 3000:3000 --env-file .env uptime-monitor-server
+```
+
+### Reverse Proxy (Nginx)
+
+```nginx
+server {
+    listen 80;
+    server_name api.yourdomain.com;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+## 🛠️ Development
+
+### Project Structure
+
+```
+server/
+├── src/
+│   ├── index.ts              # Application entry point
+│   ├── routes/
+│   │   └── monitoring.ts     # API routes
+│   ├── services/
+│   │   └── database.ts       # Supabase client
+│   ├── middleware/
+│   │   ├── auth.ts          # Authentication
+│   │   └── validation.ts    # Request validation
+│   └── types/
+│       └── monitoring.ts     # TypeScript types
+├── migrations/
+│   └── 001_create_tables.sql
+├── tests/
+│   └── api.test.ts
+├── package.json
+├── tsconfig.json
+├── .env.example
+└── README.md
+```
+
+### Available Scripts
+
+```bash
+# Development
+bun run dev              # Start with hot reload
+bun run build            # Build for production
+bun run start            # Start production server
+
+# Database
+bun run migrate          # Run migrations
+bun run migrate:rollback # Rollback last migration
+bun run db:seed          # Seed test data
+
+# Testing
+bun test                 # Run all tests
+bun test:watch          # Run tests in watch mode
+bun test:coverage       # Generate coverage report
+
+# Code Quality
+bun run lint            # Lint code
+bun run format          # Format code with Prettier
+bun run type-check      # TypeScript type checking
+```
+
+### Adding New Endpoints
+
+1. Create route handler in `src/routes/`
+2. Add validation middleware
+3. Update TypeScript types
+4. Write tests
+5. Update API documentation
+
+### Running Tests
+
+```bash
+# Run all tests
+bun test
+
+# Run specific test file
+bun test api.test.ts
+
+# Watch mode
+bun test --watch
+
+# With coverage
+bun test --coverage
+```
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**Problem: "Unauthorized" error**
+```bash
+# Verify API key is set correctly
+echo $API_KEY
+
+# Check Authorization header format
+# Should be: Authorization: Bearer your-api-key
+```
+
+**Problem: "Database connection failed"**
+```bash
+# Verify Supabase credentials
+echo $SUPABASE_URL
+echo $SUPABASE_SERVICE_KEY
+
+# Test connection
+curl $SUPABASE_URL/rest/v1/ \
+  -H "apikey: $SUPABASE_SERVICE_KEY"
+```
+
+**Problem: "Table does not exist"**
+```bash
+# Run migrations
+bun run migrate
+
+# Or create table manually in Supabase Dashboard
+```
+
+**Problem: Port already in use**
+```bash
+# Change port
+export PORT=3001
+
+# Or kill process using port 3000
+lsof -ti:3000 | xargs kill -9
+```
+
+**Problem: CORS errors**
+```bash
+# Add your frontend domain to ALLOWED_ORIGINS
+export ALLOWED_ORIGINS=https://yourdomain.com
+```
+
+### Debug Mode
+
+Enable detailed logging:
+
+```bash
+export LOG_LEVEL=debug
+bun run dev
+```
+
+### Health Check
+
+```bash
+# Verify server is running
+curl http://localhost:3000/api/health
+
+# Expected response:
+# {"status":"ok","timestamp":"...","version":"1.0.0"}
+```
+
+## 📈 Performance Tips
+
+1. **Database Indexes**: Ensure indexes exist on frequently queried columns
+   ```sql
+   CREATE INDEX IF NOT EXISTS idx_environment ON monitoring_reports(environment);
+   CREATE INDEX IF NOT EXISTS idx_timestamp ON monitoring_reports(timestamp);
+   ```
+
+2. **Connection Pooling**: Supabase handles this automatically
+
+3. **Rate Limiting**: Implement rate limiting for public endpoints
+   ```typescript
+   import rateLimit from 'express-rate-limit';
+   
+   const limiter = rateLimit({
+     windowMs: 15 * 60 * 1000, // 15 minutes
+     max: 100 // limit each IP to 100 requests per windowMs
+   });
+   ```
+
+4. **Caching**: Cache frequent queries using Redis or in-memory cache
+
+5. **Query Optimization**: Use Supabase query hints and explain plans
+
+## 🔒 Security Best Practices
+
+1. **Never commit secrets**: Use `.env` and add to `.gitignore`
+2. **Rotate API keys**: Regularly update `API_KEY` values
+3. **Use HTTPS**: Always use TLS in production
+4. **Rate limiting**: Prevent API abuse
+5. **Input validation**: Validate all request data
+6. **SQL injection**: Use parameterized queries (Supabase handles this)
+7. **CORS**: Restrict to known origins only
+8. **Monitoring**: Log all API access and errors
+
+## 📄 License
+
+MIT License - see [LICENSE](../LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Built with [Bun](https://bun.sh)
+- Database by [Supabase](https://supabase.com)
+- Inspired by modern observability platforms
+
+## 📞 Support
+
+- 📧 Open an issue on GitHub
+- 💬 Start a discussion
+- ⭐ Star the repository if you find it useful!
+
+
+
+**Part of the Axiolot Hub Uptime Monitor ecosystem** | [Main Monitor](../README.md) | [Server API](./README.md)

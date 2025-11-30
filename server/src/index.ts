@@ -69,8 +69,8 @@ const serveStaticFile = (filePath: string, contentType: string) => {
 
 const serveAppFile = (c: any) => {
   try {
-    const path = c.req.path.replace('/app/', '');
-    const filePath = join(__dirname, '..', 'public', 'app', path);
+    const path = c.req.path.replace('/_app/', '');
+    const filePath = join(__dirname, '..', 'public', '_app', path);
     const content = readFileSync(filePath);
 
     const ext = path.split('.').pop()?.toLowerCase();
@@ -109,9 +109,9 @@ app.use(
   })
 );
 
-app.get('/app/*', serveAppFile);
+app.get('/_app/*', serveAppFile);
 app.get('/favicon.ico', serveStaticFile('favicon.ico', 'image/x-icon'));
-app.get('/', serveStaticFile('dashboard.html', 'text/html'));
+app.get('/', serveStaticFile('index.html', 'text/html'));
 
 
 // Health Check
