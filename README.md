@@ -8,6 +8,15 @@ A production-ready uptime monitoring service built with Go, featuring intelligen
 [![GitHub Stars](https://img.shields.io/github/stars/arieduportal/uptime-monitor?style=social)](https://github.com/arieduportal/uptime-monitor)
 [![Axiolot Hub logo](https://static.axiolot.com.ng/favicon.ico)](https://axiolot.com.ng)
 
+## 🪟 Views
+
+![Key Generation](./docs/images/image-1.png)
+![Dates Filter](./docs/images/image-2.png)
+![Domain Performance Comparison](./docs/images/image-3.png)
+![Single Date Filter](./docs/images/image-4.png)
+![Domain Filter](./docs/images/image-5.png)
+
+
 ## ✨ Features
 
 ### Core Monitoring
