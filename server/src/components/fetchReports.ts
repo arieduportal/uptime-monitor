@@ -24,27 +24,20 @@ export async function fetchReports(query: {
   const sinceDate = new Date();
   sinceDate.setDate(sinceDate.getDate() - days);
 
-  const { data, error } = await supabase
-    .from(REPORTS_TABLE)
-    .select("timestamp, results")
-    .gte("timestamp", sinceDate.toISOString())
-    .order("timestamp", { ascending: true })
-    .range(0, 999999);
+  const { data, error } = await supabase.rpc("get_reports_since", {
+    days_back: days,
+  });
 
   if (error) {
     throw new Error(`Failed to fetch reports: ${error.message}`);
   }
 
-  console.log(data);
-
-  const filteredData = data.map((row) => ({
+  const filteredData = data.map((row: any) => ({
     ...row,
-    results:
-      domains.length === 0
-        ? row.results
-        : row.results.filter((r: HealthCheckResult) =>
-            domains.includes(r.domain),
-          ),
+    results: row.results.filter(
+      (r: HealthCheckResult) =>
+        domains.length === 0 || domains.includes(r.domain),
+    ),
   }));
 
   const summaries = summarizeDomainData(filteredData, domains);
@@ -56,7 +49,6 @@ export async function fetchReports(query: {
   console.log("rows fetched:", data.length);
   console.log("first row timestamp:", data[0]?.timestamp);
   console.log("last row timestamp:", data[data.length - 1]?.timestamp);
-
 
   return summaries;
 }
