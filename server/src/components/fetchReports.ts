@@ -28,11 +28,14 @@ export async function fetchReports(query: {
     .from(REPORTS_TABLE)
     .select("timestamp, results")
     .gte("timestamp", sinceDate.toISOString())
-    .order("timestamp", { ascending: true });
+    .order("timestamp", { ascending: true })
+    .range(0, 999999);
 
   if (error) {
     throw new Error(`Failed to fetch reports: ${error.message}`);
   }
+
+  console.log(data);
 
   const filteredData = data.map((row) => ({
     ...row,
