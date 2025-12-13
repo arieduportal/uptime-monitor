@@ -9,6 +9,9 @@ A high-performance monitoring report API built with Bun and Supabase, designed t
 [![GitHub Stars](https://img.shields.io/github/stars/arieduportal/uptime-monitor?style=social)](https://github.com/arieduportal/uptime-monitor)
 [![Axiolot Hub logo](https://static.axiolot.com.ng/favicon.ico)](https://axiolot.com.ng)
 
+
+## 🪟 Views
+
 ## ✨ Features
 
 ### Core Capabilities
