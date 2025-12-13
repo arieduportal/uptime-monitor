@@ -12,11 +12,7 @@ export async function fetchReports(query: {
 }) {
   const days = query.days || 60;
   const domains = query.domains || [];
-  console.log(
-    query.useCache,
-    query.days,
-    JSON.stringify(query.domains),
-  );
+  console.log(query.useCache, query.days, JSON.stringify(query.domains));
 
   if (query.useCache && domains.length > 0) {
     console.log("using cache");
@@ -36,21 +32,18 @@ export async function fetchReports(query: {
     .order("timestamp", { ascending: true });
 
   if (domains.length > 0) {
-    const conditions = domains
-      .map((d) => `results@>>[{"domain":"${d}"}]`)
-      .join(",");
-    console.log("Filter condition:", conditions);
-    supabaseQuery = supabaseQuery.or(conditions);
+    domains.map((domain) => ({
+      domain: domain,
+    }));
+
+    supabaseQuery = supabaseQuery.or(
+      domains
+        .map((domain) => `results.cs.${JSON.stringify([{ domain }])}`)
+        .join(","),
+    );
   }
 
   const { data, error } = await supabaseQuery;
-
-  console.log(`Fetched ${data?.length} records from Supabase`);
-  if (data && data.length > 0) {
-    console.log(
-      `Date range: ${data[0]?.timestamp} to ${data[data.length - 1]?.timestamp}`,
-    );
-  }
 
   if (error) {
     console.log(error);
