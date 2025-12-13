@@ -52,6 +52,11 @@ export async function fetchReports(query: {
   if (query.useCache && domains.length > 0) {
     await saveSummariesToCache(summaries);
   }
+  console.log("sinceDate:", sinceDate.toISOString());
+  console.log("rows fetched:", data.length);
+  console.log("first row timestamp:", data[0]?.timestamp);
+  console.log("last row timestamp:", data[data.length - 1]?.timestamp);
+
 
   return summaries;
 }
