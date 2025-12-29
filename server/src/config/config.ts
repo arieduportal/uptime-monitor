@@ -5,6 +5,7 @@ export const SUPABASE_KEY = process.env.SUPABASE_KEY!;
 export const REPORTS_TABLE = process.env.REPORTS_TABLE || 'xxx';
 export const API_KEY_TABLE = process.env.API_KEY_TABLE || 'xxx';
 export const SUMMARY_TABLE = process.env.SUMMARY_TABLE || 'xxx';
+export const TOKEN_TABLE = process.env.TOKEN_TABLE || 'xxx';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
