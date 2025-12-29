@@ -15,6 +15,7 @@ import { submitReport } from './components/submitEndpoint.js';
 import { fetchVisualization } from './components/visualData.js';
 import { fetchReports } from './components/fetchReports.js';
 import { currentStatus } from './components/currentStatus.js';
+import { validateLiveCamToken } from './components/LiveCamToken.js';
 
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const ALLOWED_USER_AGENT = process.env.ALLOWED_USER_AGENT || 'MonitoringClient/1.0';
@@ -124,6 +125,20 @@ app.get('/health', (c) => {
   });
 });
 
+app.get('/get-token', (c) => {
+  return c.redirect('https://wa.me/+2347081317077?text=Hi%20Justin,%20I%20need%20your%20live%20cam%20token')
+})
+
+const validateTokenSchema = z.object({
+  token: z.string().min(1).max(10000),
+})
+
+app.post('/api/validate-token', rateLimitMiddleware, zValidator('json', validateTokenSchema), async (c) => {
+  const { token } = c.req.valid('json');
+  const response = await validateLiveCamToken(token);
+  return c.json({ valid: response });
+})
+
 // === API Key Generation ===
 const generateKeySchema = z.object({
   name: z.string().min(1).max(10000),
@@ -132,6 +147,7 @@ const generateKeySchema = z.object({
 
 app.post(
   '/api/v1/keys/generate',
+  rateLimitMiddleware,
   zValidator('json', generateKeySchema),
   async (c) => {
     if (NODE_ENV !== 'development') {
